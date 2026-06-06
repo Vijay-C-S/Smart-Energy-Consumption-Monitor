@@ -4,11 +4,13 @@ A FastAPI-based platform for monitoring household electricity usage, with smart 
 
 ## Features
 
-- Household and smart meter registration
+- Household and smart meter registration (one meter per household enforced)
+- User self-registration and login via `/auth/register` and `/auth/login`
 - Meter reading ingestion via REST API
 - Automatic alert generation for high usage and consumption spikes
 - Monthly usage summaries and bill estimation
-- Single-page web dashboard (Bootstrap 5) served directly from FastAPI
+- Admin Panel (`/`) — full CRUD for households, meters, and alerts
+- User Portal (`/user`) — self-service login, live dashboard, readings, and alerts
 - Python-based simulator for generating realistic meter readings
 - SQLite for local development, PostgreSQL via `DATABASE_URL`
 - Alembic migrations for schema management
@@ -23,7 +25,8 @@ A FastAPI-based platform for monitoring household electricity usage, with smart 
 | Migrations | Alembic |
 | Database | SQLite (dev), PostgreSQL (prod) |
 | Analytics | Pandas, NumPy |
-| Frontend | Bootstrap 5 (CDN) |
+| Frontend | Bootstrap 5 (CDN), Chart.js |
+| Auth | PBKDF2-HMAC-SHA256 (stdlib, no extra deps) |
 | Simulation | Python + requests |
 | Testing | Pytest |
 
@@ -31,14 +34,16 @@ A FastAPI-based platform for monitoring household electricity usage, with smart 
 
 ```
 app/
-├── routers/        # REST endpoints (households, meters, readings, alerts, reports)
+├── routers/        # REST endpoints (households, meters, readings, alerts, reports, auth)
 ├── services/       # Alert detection and analytics logic
-├── views/          # Serves the single-page dashboard
+├── views/          # Serves the HTML pages
 ├── models.py       # SQLAlchemy models
 ├── schemas.py      # Pydantic schemas
 ├── database.py     # DB session and engine
 └── main.py         # App entry point
-templates/index.html  # Single-page Bootstrap dashboard
+templates/
+├── index.html      # Admin Panel (Bootstrap dashboard)
+└── user.html       # User Portal (login / self-service dashboard)
 alembic/            # Migration versions
 simulator/          # Smart meter reading generator CLI
 tests/              # Pytest suite
@@ -81,24 +86,43 @@ python create_tables.py
 ### 4. Start the server
 
 ```powershell
+python run.py
+```
+
+Or directly with uvicorn:
+
+```powershell
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 5. Open the dashboard
+### 5. Open the app
 
-- **Web UI:** `http://127.0.0.1:8000`
-- **Swagger UI:** `http://127.0.0.1:8000/docs`
+| Page | URL |
+|---|---|
+| Admin Panel | `http://127.0.0.1:8000` |
+| User Portal | `http://127.0.0.1:8000/user` |
+| Swagger UI | `http://127.0.0.1:8000/docs` |
 
-## Dashboard
+## Admin Panel (`/`)
 
-All functionality is in a single page at `/`:
+Full management interface at the root URL:
 
-- Stat cards — households, meters, open/resolved alerts
-- Households — list and add
-- Smart Meters — list and register
-- Post Reading — submit a meter reading
+- Stat cards — households, meters, open/resolved alert counts
+- Charts — users overview, alert breakdown, usage & bill per household
+- Households — list, add, edit, delete
+- Smart Meters — list, register, delete
 - Bill Estimate & Report — select a household to see kWh totals and estimated bill
-- Alerts — list with resolve button
+- Alerts — filter by household, resolve with one click
+
+Admin-created households receive a default password (`admin`). Users can claim their account via the User Portal.
+
+## User Portal (`/user`)
+
+Self-service page for household users:
+
+- Register a new account or log in with email + password
+- Dashboard showing meter readings, alert history, and bill estimate
+- Alerts displayed as toast notifications for open HIGH/MEDIUM/LOW alerts
 
 ## API Overview
 
@@ -108,6 +132,13 @@ All functionality is in a single page at `/`:
 |---|---|---|
 | GET | `/api/status` | Health check |
 
+### Auth
+
+| Method | Route | Description |
+|---|---|---|
+| POST | `/auth/register` | Register a new household account |
+| POST | `/auth/login` | Log in with email and password |
+
 ### Households
 
 | Method | Route | Description |
@@ -115,6 +146,8 @@ All functionality is in a single page at `/`:
 | POST | `/households/` | Create household |
 | GET | `/households/` | List households |
 | GET | `/households/{id}` | Get household |
+| PUT | `/households/{id}` | Update household |
+| DELETE | `/households/{id}` | Delete household and its data |
 | GET | `/households/{id}/readings` | All readings for a household |
 | GET | `/households/{id}/alerts` | All alerts for a household |
 | GET | `/households/{id}/bill-estimate` | Bill estimate |
@@ -126,6 +159,9 @@ All functionality is in a single page at `/`:
 | POST | `/meters/` | Register a smart meter |
 | GET | `/meters/` | List all meters |
 | GET | `/meters/{id}` | Get a meter |
+| DELETE | `/meters/{id}` | Delete a meter and its readings |
+
+> Each household may have at most one meter.
 
 ### Readings
 
@@ -186,10 +222,9 @@ pytest -q
 
 ## Roadmap
 
-- Authentication and user accounts
 - Email and SMS alert notifications
 - Docker Compose deployment
-- PostgreSQL production setup
+- PostgreSQL production setup guide
 - Real-time readings via WebSocket
 
 ## License
