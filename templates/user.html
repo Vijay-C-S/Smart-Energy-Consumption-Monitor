@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Energy — My Account</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <style>
+    body { background: linear-gradient(135deg, #e8f4fd 0%, #f0f2f5 100%); min-height: 100vh; }
+
+    /* ── Auth card ── */
+    .auth-wrap { min-height: calc(100vh - 60px); display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+    .auth-card  { width: 100%; max-width: 440px; border: none; border-radius: 16px; box-shadow: 0 8px 32px rgba(13,110,253,.13); }
+    .auth-logo  { font-size: 2rem; }
+
+    /* ── Dashboard ── */
+    #dashboard  { display: none; }
+    .dash-card  { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.07); }
+    .metric-val { font-size: 1.75rem; font-weight: 700; line-height: 1.1; }
+    .metric-lbl { font-size: 0.72rem; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+    .sec-title  { font-size: .95rem; font-weight: 600; border-left: 3px solid #0d6efd; padding-left: 8px; }
+    .info-lbl   { font-size: 0.72rem; color: #888; }
+    .info-val   { font-size: 0.9rem; font-weight: 600; }
+
+    /* alert badges */
+    .badge-HIGH     { background: #dc3545 !important; }
+    .badge-MEDIUM   { background: #fd7e14 !important; }
+    .badge-LOW      { background: #198754 !important; }
+    .badge-OPEN     { background: #dc3545 !important; }
+    .badge-RESOLVED { background: #6c757d !important; }
+
+    /* nav */
+    .nav-tabs .nav-link        { color: #495057; }
+    .nav-tabs .nav-link.active { color: #0d6efd; font-weight: 600; }
+
+    /* alert toasts */
+    #alert-toast-container { position: fixed; top: 70px; right: 16px; z-index: 1100; display: flex; flex-direction: column; gap: 8px; max-width: 340px; }
+    .alert-toast { border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.18); min-width: 280px; }
+    .alert-toast.HIGH   { border-left: 5px solid #dc3545; }
+    .alert-toast.MEDIUM { border-left: 5px solid #fd7e14; }
+    .alert-toast.LOW    { border-left: 5px solid #198754; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════ NAVBAR ═══════════════════════════════════════════════════════════ -->
+<nav class="navbar navbar-dark bg-primary px-4" style="height:60px">
+  <a class="navbar-brand fw-bold" href="/">&#9889; Smart Energy</a>
+  <div class="d-flex align-items-center gap-3">
+    <span id="nav-name" class="text-white-50 small d-none"></span>
+    <button id="nav-logout" class="btn btn-outline-light btn-sm d-none" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<!-- ═══════ AUTH SECTION ═══════════════════════════════════════════════════════ -->
+<div id="auth-section" class="auth-wrap">
+  <div class="auth-card card">
+    <div class="card-body p-4 p-sm-5">
+
+      <div class="text-center mb-4">
+        <div class="auth-logo">&#9889;</div>
+        <h5 class="fw-bold mt-1 mb-0">My Energy Account</h5>
+        <div class="text-muted small">Smart Energy Monitoring Portal</div>
+      </div>
+
+      <!-- Tabs -->
+      <ul class="nav nav-tabs mb-4" id="auth-tabs" role="tablist">
+        <li class="nav-item flex-fill text-center">
+          <button class="nav-link active w-100" id="tab-login-btn" onclick="switchTab('login')">Login</button>
+        </li>
+        <li class="nav-item flex-fill text-center">
+          <button class="nav-link w-100" id="tab-reg-btn" onclick="switchTab('register')">Register</button>
+        </li>
+      </ul>
+
+      <!-- ── Login Form ─────────────────────────────────── -->
+      <div id="tab-login">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Email address</label>
+          <input type="email" class="form-control" id="l-email" placeholder="you@example.com"
+                 onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Password</label>
+          <input type="password" class="form-control" id="l-password" placeholder="••••••"
+                 onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <div id="l-msg" class="small mb-2" style="min-height:1.2em"></div>
+        <button class="btn btn-primary w-100 fw-semibold" onclick="doLogin()">Login</button>
+        <p class="text-center small text-muted mt-3 mb-0">
+          No account? <a href="#" onclick="switchTab('register');return false">Register here</a>
+        </p>
+      </div>
+
+      <!-- ── Register Form ──────────────────────────────── -->
+      <div id="tab-register" style="display:none">
+        <div class="row g-2">
+          <div class="col-12">
+            <input class="form-control" id="r-name" placeholder="Full Name *">
+          </div>
+          <div class="col-12">
+            <input type="email" class="form-control" id="r-email" placeholder="Email *">
+          </div>
+          <div class="col-12">
+            <input type="password" class="form-control" id="r-password" placeholder="Password * (min 6 chars)">
+          </div>
+          <div class="col-6">
+            <input class="form-control" id="r-phone" placeholder="Phone">
+          </div>
+          <div class="col-6">
+            <input class="form-control" id="r-address" placeholder="Address">
+          </div>
+          <div class="col-12">
+            <div class="input-group">
+              <input type="number" class="form-control" id="r-threshold" value="20" min="0.1" step="0.1">
+              <span class="input-group-text text-muted small">kWh daily limit</span>
+            </div>
+          </div>
+        </div>
+        <div id="r-msg" class="small mt-2 mb-1" style="min-height:1.2em"></div>
+        <button class="btn btn-success w-100 fw-semibold mt-1" onclick="doRegister()">Create Account</button>
+        <p class="text-center small text-muted mt-3 mb-0">
+          Already registered? <a href="#" onclick="switchTab('login');return false">Login here</a>
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ DASHBOARD ═══════════════════════════════════════════════════════ -->
+<div id="dashboard" class="container-fluid px-3 px-md-4 py-4">
+
+  <!-- Welcome row -->
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0" id="dash-welcome">Welcome!</h4>
+      <div class="text-muted small" id="dash-email"></div>
+    </div>
+    <button class="btn btn-outline-secondary btn-sm" onclick="refreshDashboard()">&#8635; Refresh</button>
+  </div>
+
+  <!-- Metric cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="dash-card card p-3 text-center">
+        <div class="metric-val text-primary" id="m-kwh">—</div>
+        <div class="metric-lbl">Total kWh</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="dash-card card p-3 text-center">
+        <div class="metric-val text-success" id="m-bill">—</div>
+        <div class="metric-lbl">Est. Bill (&#8377;)</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="dash-card card p-3 text-center">
+        <div class="metric-val text-warning" id="m-avg">—</div>
+        <div class="metric-lbl">Avg kWh / Reading</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="dash-card card p-3 text-center">
+        <div class="metric-val text-danger" id="m-alerts">—</div>
+        <div class="metric-lbl">Open Alerts</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- ── LEFT COLUMN ──────────────────────────────────────── -->
+    <div class="col-lg-6">
+
+      <!-- Household card -->
+      <div class="dash-card card p-3 mb-4">
+        <div class="sec-title mb-3">My Household</div>
+        <div id="card-household"><div class="text-muted small">Loading…</div></div>
+      </div>
+
+      <!-- Smart Meter card -->
+      <div class="dash-card card p-3 mb-4">
+        <div class="sec-title mb-3">Smart Meter</div>
+        <div id="card-meter"><div class="text-muted small">Loading…</div></div>
+      </div>
+
+    </div>
+
+    <!-- ── RIGHT COLUMN ─────────────────────────────────────── -->
+    <div class="col-lg-6">
+
+      <!-- Bill & Report card -->
+      <div class="dash-card card p-3 mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="sec-title">Bill &amp; Report</div>
+          <button class="btn btn-outline-primary btn-sm" onclick="loadBill()">Recalculate</button>
+        </div>
+        <div id="card-bill"><div class="text-muted small">Loading…</div></div>
+      </div>
+
+      <!-- Alerts card -->
+      <div class="dash-card card p-3">
+        <div class="sec-title mb-3">My Alerts</div>
+        <div id="card-alerts"><div class="text-muted small">Loading…</div></div>
+      </div>
+
+    </div>
+  </div>
+</div><!-- /dashboard -->
+
+<!-- Alert toast container -->
+<div id="alert-toast-container"></div>
+
+<!-- ═══════ SCRIPTS ══════════════════════════════════════════════════════════ -->
+<script>
+  let _user = null; // { household_id, customer_name, email }
+  const _shownAlerts = new Set(); // track which alert IDs have been popped up
+
+  function showAlertToast(alert) {
+    const colors = { HIGH: '#dc3545', MEDIUM: '#fd7e14', LOW: '#198754' };
+    const icons  = { HIGH: '🚨', MEDIUM: '⚠️', LOW: '✅' };
+    const color  = colors[alert.severity] || '#0d6efd';
+    const icon   = icons[alert.severity]  || '🔔';
+    const id     = 'toast-' + alert.alert_id;
+
+    const div = document.createElement('div');
+    div.className = `alert-toast ${alert.severity} toast show`;
+    div.id = id;
+    div.setAttribute('role', 'alert');
+    div.innerHTML = `
+      <div class="toast-header" style="border-bottom:1px solid #eee">
+        <span style="color:${color};font-size:1rem;margin-right:6px">${icon}</span>
+        <strong class="me-auto" style="color:${color}">${esc(alert.alert_type)}</strong>
+        <small class="text-muted ms-2">${esc(alert.severity)}</small>
+        <button type="button" class="btn-close ms-2" onclick="document.getElementById('${id}').remove()"></button>
+      </div>
+      <div class="toast-body" style="font-size:.85rem">${esc(alert.message)}</div>`;
+
+    document.getElementById('alert-toast-container').appendChild(div);
+
+    // auto-dismiss after 6 s
+    setTimeout(() => { if (div.parentNode) div.remove(); }, 6000);
+  }
+
+  // ─── Tab switching ───────────────────────────────────────────────────────────
+
+  function switchTab(t) {
+    const isLogin = t === 'login';
+    document.getElementById('tab-login').style.display    = isLogin ? '' : 'none';
+    document.getElementById('tab-register').style.display = isLogin ? 'none' : '';
+    document.getElementById('tab-login-btn').classList.toggle('active', isLogin);
+    document.getElementById('tab-reg-btn').classList.toggle('active', !isLogin);
+  }
+
+  // ─── Auth ────────────────────────────────────────────────────────────────────
+
+  async function doLogin() {
+    const email    = document.getElementById('l-email').value.trim();
+    const password = document.getElementById('l-password').value;
+    const msg      = document.getElementById('l-msg');
+    if (!email || !password) { setMsg(msg, 'Email and password required.', false); return; }
+    try {
+      const res = await apiPost('/auth/login', { email, password });
+      setMsg(msg, 'Login successful!', true);
+      onLoginSuccess(res);
+    } catch (e) { setMsg(msg, extractError(e), false); }
+  }
+
+  async function doRegister() {
+    const name     = document.getElementById('r-name').value.trim();
+    const email    = document.getElementById('r-email').value.trim();
+    const password = document.getElementById('r-password').value;
+    const msg      = document.getElementById('r-msg');
+    if (!name || !email || !password) { setMsg(msg, 'Name, email and password are required.', false); return; }
+    const threshold = parseFloat(document.getElementById('r-threshold').value) || 20;
+    try {
+      const res = await apiPost('/auth/register', {
+        customer_name: name, email, password,
+        phone:     document.getElementById('r-phone').value.trim()   || null,
+        address:   document.getElementById('r-address').value.trim() || null,
+        daily_kwh_threshold: threshold,
+      });
+      setMsg(msg, 'Account created! Logging you in…', true);
+      onLoginSuccess(res);
+    } catch (e) { setMsg(msg, extractError(e), false); }
+  }
+
+  function onLoginSuccess(user) {
+    _user = user;
+    localStorage.setItem('sem_user', JSON.stringify(user));
+    showDashboard();
+  }
+
+  function logout() {
+    _user = null;
+    localStorage.removeItem('sem_user');
+    document.getElementById('dashboard').style.display    = 'none';
+    document.getElementById('auth-section').style.display = 'flex';
+    document.getElementById('nav-name').classList.add('d-none');
+    document.getElementById('nav-logout').classList.add('d-none');
+    ['m-kwh','m-bill','m-avg','m-alerts'].forEach(id => document.getElementById(id).textContent = '—');
+  }
+
+  function showDashboard() {
+    document.getElementById('auth-section').style.display = 'none';
+    document.getElementById('dashboard').style.display    = 'block';
+    document.getElementById('dash-welcome').textContent   = 'Welcome, ' + _user.customer_name + '!';
+    document.getElementById('dash-email').textContent     = _user.email;
+    document.getElementById('nav-name').textContent       = _user.customer_name;
+    document.getElementById('nav-name').classList.remove('d-none');
+    document.getElementById('nav-logout').classList.remove('d-none');
+    refreshDashboard();
+  }
+
+  async function refreshDashboard() {
+    if (!_user) return;
+    await Promise.all([loadHousehold(), loadMeter(), loadBill(), loadAlerts()]);
+  }
+
+  // ─── Dashboard panels ────────────────────────────────────────────────────────
+
+  async function loadHousehold() {
+    const el = document.getElementById('card-household');
+    try {
+      const h = await apiGet(`/households/${_user.household_id}`);
+      el.innerHTML = `
+        <div class="row g-2">
+          <div class="col-6">
+            <div class="info-lbl">Name</div>
+            <div class="info-val">${esc(h.customer_name)}</div>
+          </div>
+          <div class="col-6">
+            <div class="info-lbl">Email</div>
+            <div class="info-val">${esc(h.email)}</div>
+          </div>
+          <div class="col-6">
+            <div class="info-lbl">Phone</div>
+            <div class="info-val">${esc(h.phone || '—')}</div>
+          </div>
+          <div class="col-6">
+            <div class="info-lbl">Daily Limit</div>
+            <div class="info-val">${h.daily_kwh_threshold} kWh</div>
+          </div>
+          <div class="col-12">
+            <div class="info-lbl">Address</div>
+            <div class="info-val">${esc(h.address || '—')}</div>
+          </div>
+          <div class="col-12">
+            <div class="info-lbl">Member Since</div>
+            <div class="info-val">${fmtDate(h.created_at)}</div>
+          </div>
+        </div>`;
+    } catch (e) {
+      el.innerHTML = `<div class="text-danger small">${extractError(e)}</div>`;
+    }
+  }
+
+  async function loadMeter() {
+    const el = document.getElementById('card-meter');
+    try {
+      const meters = await apiGet('/meters/');
+      const mine   = meters.filter(m => m.household_id === _user.household_id);
+      if (!mine.length) {
+        el.innerHTML = `
+          <div class="text-muted small mb-3">No smart meter registered yet.</div>
+          <div class="info-lbl fw-semibold mb-2">Register Your Meter</div>
+          <div class="row g-2">
+            <div class="col-8">
+              <input class="form-control form-control-sm" id="new-meter-num"
+                     placeholder="Meter # e.g. MTR-1001 *">
+            </div>
+            <div class="col-4">
+              <button class="btn btn-primary btn-sm w-100" onclick="registerMeter()">Register</button>
+            </div>
+            <div class="col-12"><span id="meter-msg" class="small" style="min-height:1em"></span></div>
+          </div>`;
+        return;
+      }
+      const m = mine[0];
+      el.innerHTML = `
+        <div class="row g-2">
+          <div class="col-6">
+            <div class="info-lbl">Meter Number</div>
+            <div class="info-val">${esc(m.meter_number)}</div>
+          </div>
+          <div class="col-6">
+            <div class="info-lbl">Status</div>
+            <span class="badge ${m.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'}">${esc(m.status)}</span>
+          </div>
+          <div class="col-6">
+            <div class="info-lbl">Meter ID</div>
+            <div class="info-val">#${m.meter_id}</div>
+          </div>
+          <div class="col-6">
+            <div class="info-lbl">Installed</div>
+            <div class="info-val">${fmtDate(m.installed_date)}</div>
+          </div>
+        </div>`;
+    } catch (e) {
+      el.innerHTML = `<div class="text-danger small">${extractError(e)}</div>`;
+    }
+  }
+
+  async function registerMeter() {
+    const num = document.getElementById('new-meter-num').value.trim();
+    const msg = document.getElementById('meter-msg');
+    if (!num) { setMsg(msg, 'Meter number is required.', false); return; }
+    try {
+      await apiPost('/meters/', { household_id: _user.household_id, meter_number: num });
+      setMsg(msg, 'Meter registered successfully!', true);
+      await Promise.all([loadMeter(), loadBill()]);
+    } catch (e) { setMsg(msg, extractError(e), false); }
+  }
+
+  async function loadBill() {
+    const el = document.getElementById('card-bill');
+    try {
+      const [bill, report] = await Promise.all([
+        apiGet(`/households/${_user.household_id}/bill-estimate`),
+        apiGet(`/reports/monthly/${_user.household_id}`).catch(() => null),
+      ]);
+
+      document.getElementById('m-kwh').textContent  = bill.total_kwh  ?? '—';
+      document.getElementById('m-bill').textContent = bill.estimated_bill != null ? '₹' + bill.estimated_bill : '—';
+      if (report) document.getElementById('m-avg').textContent = report.average_kwh ?? '—';
+
+      // render bill card
+      let html = `
+        <div class="row g-3 text-center mb-2">
+          <div class="col-4">
+            <div class="fw-bold fs-5 text-primary">${bill.total_kwh}</div>
+            <div class="small text-muted">Total kWh</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold fs-5">&#8377;${bill.rate_per_kwh}</div>
+            <div class="small text-muted">Rate / kWh</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold fs-5 text-success">&#8377;${bill.estimated_bill}</div>
+            <div class="small text-muted">Est. Bill</div>
+          </div>
+        </div>`;
+
+      if (report && report.reading_count > 0) {
+        html += `
+          <hr class="my-2">
+          <div class="row g-2 text-center">
+            <div class="col-4">
+              <div class="fw-semibold">${report.average_kwh}</div>
+              <div class="small text-muted">Avg kWh</div>
+            </div>
+            <div class="col-4">
+              <div class="fw-semibold">${report.peak_kwh}</div>
+              <div class="small text-muted">Peak kWh</div>
+            </div>
+            <div class="col-4">
+              <div class="fw-semibold">${report.reading_count}</div>
+              <div class="small text-muted">Readings</div>
+            </div>
+          </div>`;
+      } else {
+        html += `<div class="text-muted small mt-1">No readings yet — submit meter readings to see your report.</div>`;
+      }
+
+      el.innerHTML = html;
+    } catch (_) {
+      el.innerHTML = `<div class="text-muted small">No billing data available yet.</div>`;
+    }
+  }
+
+  async function loadAlerts() {
+    const el = document.getElementById('card-alerts');
+    try {
+      const alerts = await apiGet(`/households/${_user.household_id}/alerts`);
+      const open   = alerts.filter(a => a.status === 'OPEN');
+      document.getElementById('m-alerts').textContent = open.length;
+
+      // show popup toasts for open alerts not yet shown
+      open.forEach(a => {
+        if (!_shownAlerts.has(a.alert_id)) {
+          _shownAlerts.add(a.alert_id);
+          showAlertToast(a);
+        }
+      });
+
+      if (!alerts.length) {
+        el.innerHTML = `<div class="text-success small">&#10003; No alerts — all good!</div>`;
+        return;
+      }
+
+      el.innerHTML = `
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0" style="font-size:.82rem">
+            <thead class="table-light">
+              <tr><th>Type</th><th>Message</th><th>Severity</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              ${alerts.slice(0, 10).map(a => `
+                <tr>
+                  <td>${esc(a.alert_type)}</td>
+                  <td class="text-truncate" style="max-width:150px" title="${esc(a.message)}">${esc(a.message)}</td>
+                  <td><span class="badge badge-${a.severity}">${a.severity}</span></td>
+                  <td><span class="badge badge-${a.status}">${a.status}</span></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    } catch (e) {
+      document.getElementById('m-alerts').textContent = '—';
+      el.innerHTML = `<div class="text-danger small">${extractError(e)}</div>`;
+    }
+  }
+
+  // ─── Utilities ───────────────────────────────────────────────────────────────
+
+  async function apiGet(path) {
+    const r = await fetch(path);
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+
+  async function apiPost(path, body) {
+    const r = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+
+  function setMsg(el, text, ok) {
+    el.textContent = text;
+    el.className   = 'small ' + (ok ? 'text-success' : 'text-danger');
+  }
+
+  function extractError(e) {
+    try {
+      const parsed = JSON.parse(e.message);
+      if (typeof parsed.detail === 'string') return parsed.detail;
+      if (Array.isArray(parsed.detail))      return parsed.detail.map(d => d.msg).join(', ');
+    } catch (_) {}
+    return e.message || 'Unknown error';
+  }
+
+  function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function fmtDate(s) {
+    if (!s) return '—';
+    return new Date(s).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+  }
+
+  // ─── Init — restore session if already logged in ─────────────────────────────
+  try {
+    const saved = localStorage.getItem('sem_user');
+    if (saved) {
+      _user = JSON.parse(saved);
+      showDashboard();
+    }
+  } catch (_) { localStorage.removeItem('sem_user'); }
+</script>
+</body>
+</html>

@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Energy Monitor</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    body { background: #f0f2f5; }
+    .card { border: none; box-shadow: 0 1px 4px rgba(0,0,0,.1); border-radius: 8px; }
+    .stat-num { font-size: 2rem; font-weight: 700; }
+    .stat-label { font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: .5px; }
+    .section-title { font-size: 1rem; font-weight: 600; border-left: 3px solid #0d6efd; padding-left: 8px; margin-bottom: 12px; }
+    table { font-size: 0.875rem; }
+    .badge-HIGH { background: #dc3545; }
+    .badge-MEDIUM { background: #fd7e14; }
+    .badge-LOW { background: #198754; }
+    .badge-OPEN { background: #dc3545; }
+    .badge-RESOLVED { background: #6c757d; }
+    .chart-card { height: 280px; display: flex; align-items: center; justify-content: center; }
+    .chart-card canvas { max-height: 240px; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-primary px-4 mb-4">
+  <div class="d-flex align-items-center gap-2">
+    <span class="navbar-brand fw-bold fs-5 mb-0">⚡ Smart Energy Monitor</span>
+    <span class="badge bg-warning text-dark">Admin Panel</span>
+  </div>
+  <div class="d-flex align-items-center gap-3">
+    <a href="/user" class="btn btn-outline-light btn-sm">User Portal</a>
+  </div>
+</nav>
+
+<div class="container-fluid px-4">
+
+  <!-- Stat Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-sm-3">
+      <div class="card p-3 text-center">
+        <div class="stat-num text-primary" id="stat-households">—</div>
+        <div class="stat-label">Households</div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-3">
+      <div class="card p-3 text-center">
+        <div class="stat-num text-primary" id="stat-meters">—</div>
+        <div class="stat-label">Smart Meters</div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-3">
+      <div class="card p-3 text-center">
+        <div class="stat-num text-danger" id="stat-open-alerts">—</div>
+        <div class="stat-label">Open Alerts</div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-3">
+      <div class="card p-3 text-center">
+        <div class="stat-num text-success" id="stat-resolved-alerts">—</div>
+        <div class="stat-label">Resolved Alerts</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="row g-3 mb-4">
+    <div class="col-lg-4">
+      <div class="card p-3">
+        <div class="section-title">Users Overview</div>
+        <div class="chart-card"><canvas id="chart-users"></canvas></div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card p-3">
+        <div class="section-title">Alerts Status</div>
+        <div class="chart-card"><canvas id="chart-alerts"></canvas></div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card p-3">
+        <div class="section-title">Usage &amp; Bills per Household</div>
+        <div class="chart-card"><canvas id="chart-usage"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- LEFT COLUMN -->
+    <div class="col-lg-6">
+
+      <!-- Households -->
+      <div class="card p-3 mb-4">
+        <div class="section-title">Households</div>
+        <div class="table-responsive mb-3">
+          <table class="table table-sm table-hover mb-0" id="households-table">
+            <thead class="table-light"><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Daily Limit (kWh)</th><th>Actions</th></tr></thead>
+            <tbody><tr><td colspan="6" class="text-muted text-center">Loading...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="text-muted small fw-semibold mb-2">Add Household</div>
+        <div class="row g-2">
+          <div class="col-6"><input class="form-control form-control-sm" id="h-name" placeholder="Name *"></div>
+          <div class="col-6"><input class="form-control form-control-sm" id="h-email" type="email" placeholder="Email *"></div>
+          <div class="col-6"><input class="form-control form-control-sm" id="h-phone" placeholder="Phone"></div>
+          <div class="col-6"><input class="form-control form-control-sm" id="h-address" placeholder="Address"></div>
+          <div class="col-6"><input class="form-control form-control-sm" id="h-threshold" type="number" step="0.1" min="0.1" placeholder="Daily kWh limit *" value="20"></div>
+          <div class="col-12 d-flex align-items-center gap-2">
+            <button class="btn btn-primary btn-sm" onclick="addHousehold()">Add</button>
+            <span id="h-msg" class="small"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meters -->
+      <div class="card p-3 mb-4">
+        <div class="section-title">Smart Meters</div>
+        <div class="table-responsive mb-3">
+          <table class="table table-sm table-hover mb-0" id="meters-table">
+            <thead class="table-light"><tr><th>ID</th><th>Meter #</th><th>Household</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody><tr><td colspan="5" class="text-muted text-center">Loading...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="text-muted small fw-semibold mb-2">Register Meter</div>
+        <div class="row g-2">
+          <div class="col-6">
+            <select class="form-select form-select-sm" id="m-household">
+              <option value="">Select Household *</option>
+            </select>
+          </div>
+          <div class="col-6"><input class="form-control form-control-sm" id="m-number" placeholder="Meter # (e.g. MTR-1001) *"></div>
+          <div class="col-12 d-flex align-items-center gap-2">
+            <button class="btn btn-primary btn-sm" onclick="addMeter()">Register</button>
+            <span id="m-msg" class="small"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col-lg-6">
+
+      <!-- Bill & Report -->
+      <div class="card p-3 mb-4">
+        <div class="section-title">Bill Estimate & Report</div>
+        <div class="row g-2 mb-3">
+          <div class="col-8">
+            <select class="form-select form-select-sm" id="bill-household">
+              <option value="">Select Household</option>
+            </select>
+          </div>
+          <div class="col-4">
+            <button class="btn btn-outline-primary btn-sm w-100" onclick="getBill()">Calculate</button>
+          </div>
+        </div>
+        <div id="bill-result"></div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="card p-3">
+        <div class="section-title mb-3">Alerts</div>
+        <div class="row g-2 mb-3">
+          <div class="col-8">
+            <select class="form-select form-select-sm" id="alert-household" onchange="loadAlerts()">
+              <option value="">Select Household</option>
+            </select>
+          </div>
+          <div class="col-4">
+            <button class="btn btn-outline-secondary btn-sm w-100" onclick="document.getElementById('alert-household').value='';loadAlerts()">All</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0" id="alerts-table">
+            <thead class="table-light"><tr><th>Type</th><th>Message</th><th>Severity</th><th>Status</th><th></th></tr></thead>
+            <tbody><tr><td colspan="5" class="text-muted text-center">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  let _households = [];
+  let _meters = [];
+
+  async function api(path, opts) {
+    const r = await fetch(path, opts);
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+
+  async function loadAll() {
+    await Promise.all([loadHouseholds(), loadMeters()]);
+    let alerts = [];
+    try { alerts = await api('/alerts/'); } catch {}
+    await loadAlerts();
+    await refreshCharts(alerts);
+  }
+
+  async function loadHouseholds() {
+    try {
+      _households = await api('/households/');
+      _households.sort((a, b) => b.household_id - a.household_id);
+    } catch { _households = []; }
+
+    document.getElementById('stat-households').textContent = _households.length;
+
+    const tbody = document.querySelector('#households-table tbody');
+    tbody.innerHTML = _households.length
+      ? _households.map(h => householdRow(h)).join('')
+      : '<tr><td colspan="6" class="text-muted text-center">No households yet</td></tr>';
+
+    const opts = _households.map(h => `<option value="${h.household_id}">${h.household_id} – ${h.customer_name}</option>`).join('');
+    document.getElementById('m-household').innerHTML = '<option value="">Select Household *</option>' + opts;
+    document.getElementById('bill-household').innerHTML = '<option value="">Select Household</option>' + opts;
+    document.getElementById('alert-household').innerHTML = '<option value="">Select Household</option>' + opts;
+  }
+
+  async function loadMeters() {
+    try {
+      _meters = await api('/meters/');
+    } catch { _meters = []; }
+
+    document.getElementById('stat-meters').textContent = _meters.length;
+
+    const hMap = Object.fromEntries(_households.map(h => [h.household_id, h.customer_name]));
+    const tbody = document.querySelector('#meters-table tbody');
+    tbody.innerHTML = _meters.length
+      ? _meters.map(m =>
+          `<tr>
+            <td>${m.meter_id}</td>
+            <td>${escHtml(m.meter_number)}</td>
+            <td>${escHtml(hMap[m.household_id] || m.household_id)}</td>
+            <td>${m.status}</td>
+            <td><button class="btn btn-outline-danger btn-sm py-0 px-2" onclick="deleteMeter(${m.meter_id})">Delete</button></td>
+          </tr>`
+        ).join('')
+      : '<tr><td colspan="5" class="text-muted text-center">No meters yet</td></tr>';
+
+    const meterSelect = document.getElementById('r-meter');
+    if (meterSelect) {
+      meterSelect.innerHTML = '<option value="">Select Meter *</option>' +
+        _meters.map(m => `<option value="${m.meter_id}">${m.meter_number}</option>`).join('');
+    }
+  }
+
+  async function loadAlerts() {
+    const householdId = document.getElementById('alert-household')?.value;
+    let alerts = [];
+    try {
+      alerts = householdId
+        ? await api(`/households/${householdId}/alerts`)
+        : await api('/alerts/');
+    } catch {}
+
+    // update stat cards only when showing all
+    if (!householdId) {
+      document.getElementById('stat-open-alerts').textContent     = alerts.filter(a => a.status === 'OPEN').length;
+      document.getElementById('stat-resolved-alerts').textContent = alerts.filter(a => a.status === 'RESOLVED').length;
+    }
+
+    const tbody = document.querySelector('#alerts-table tbody');
+    tbody.innerHTML = alerts.length
+      ? alerts.slice(0, 25).map(a => `
+          <tr>
+            <td>${escHtml(a.alert_type)}</td>
+            <td class="text-truncate" style="max-width:160px" title="${escHtml(a.message)}">${escHtml(a.message)}</td>
+            <td><span class="badge badge-${a.severity}">${a.severity}</span></td>
+            <td><span class="badge badge-${a.status}">${a.status}</span></td>
+            <td>${a.status === 'OPEN'
+              ? `<button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="resolveAlert(${a.alert_id})">Resolve</button>`
+              : ''}</td>
+          </tr>`).join('')
+      : '<tr><td colspan="5" class="text-muted text-center">No alerts</td></tr>';
+  }
+
+  async function addHousehold() {
+    const msg = document.getElementById('h-msg');
+    const name = document.getElementById('h-name').value.trim();
+    const email = document.getElementById('h-email').value.trim();
+    const threshold = parseFloat(document.getElementById('h-threshold').value);
+    if (!name || !email) { msg.className = 'small text-danger'; msg.textContent = 'Name and email required.'; return; }
+    if (!threshold || threshold <= 0) { msg.className = 'small text-danger'; msg.textContent = 'Daily kWh limit required.'; return; }
+    try {
+      await api('/households/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_name: name, email,
+          phone: document.getElementById('h-phone').value.trim() || null,
+          address: document.getElementById('h-address').value.trim() || null,
+          daily_kwh_threshold: threshold,
+        }),
+      });
+      ['h-name','h-email','h-phone','h-address','h-threshold'].forEach(id => document.getElementById(id).value = '');
+      msg.className = 'small text-success'; msg.textContent = 'Added!';
+      await loadHouseholds();
+    } catch (e) {
+      msg.className = 'small text-danger'; msg.textContent = 'Error: ' + e.message;
+    }
+  }
+
+  async function addMeter() {
+    const msg = document.getElementById('m-msg');
+    const householdId = parseInt(document.getElementById('m-household').value);
+    const number = document.getElementById('m-number').value.trim();
+    if (!householdId || !number) { msg.className = 'small text-danger'; msg.textContent = 'All fields required.'; return; }
+    try {
+      await api('/meters/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ household_id: householdId, meter_number: number }),
+      });
+      document.getElementById('m-number').value = '';
+      msg.className = 'small text-success'; msg.textContent = 'Registered!';
+      await loadMeters();
+    } catch (e) {
+      msg.className = 'small text-danger'; msg.textContent = 'Error: ' + e.message;
+    }
+  }
+
+  async function resolveAlert(id) {
+    try {
+      await api(`/alerts/${id}/resolve`, { method: 'PUT' });
+      await loadAlerts();
+    } catch (e) { alert('Failed: ' + e.message); }
+  }
+
+  async function getBill() {
+    const id = document.getElementById('bill-household').value;
+    const el = document.getElementById('bill-result');
+    if (!id) { el.innerHTML = ''; return; }
+    try {
+      const [bill, report] = await Promise.all([
+        api(`/households/${id}/bill-estimate`),
+        api(`/reports/monthly/${id}`).catch(() => null),
+      ]);
+      el.innerHTML = `
+        <div class="row g-3 text-center">
+          <div class="col-4">
+            <div class="fw-bold fs-5">${bill.total_kwh}</div>
+            <div class="small text-muted">Total kWh</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold fs-5">₹${bill.rate_per_kwh}</div>
+            <div class="small text-muted">Rate/kWh</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold fs-5 text-success">₹${bill.estimated_bill}</div>
+            <div class="small text-muted">Est. Bill</div>
+          </div>
+          ${report ? `
+          <div class="col-4">
+            <div class="fw-bold">${report.average_kwh}</div>
+            <div class="small text-muted">Avg kWh</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold">${report.peak_kwh}</div>
+            <div class="small text-muted">Peak kWh</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold">${report.reading_count}</div>
+            <div class="small text-muted">Readings</div>
+          </div>` : ''}
+        </div>`;
+    } catch (e) {
+      el.innerHTML = `<div class="text-danger small">${e.message}</div>`;
+    }
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function householdRow(h) {
+    return `<tr id="hrow-${h.household_id}">
+      <td>${h.household_id}</td>
+      <td>${escHtml(h.customer_name)}</td>
+      <td>${escHtml(h.email)}</td>
+      <td>${h.phone ? escHtml(h.phone) : '—'}</td>
+      <td>${h.daily_kwh_threshold} kWh</td>
+      <td class="d-flex gap-1">
+        <button class="btn btn-outline-primary btn-sm py-0 px-2" onclick="startEditHousehold(${h.household_id})">Edit</button>
+        <button class="btn btn-outline-danger btn-sm py-0 px-2" onclick="deleteHousehold(${h.household_id})">Delete</button>
+      </td>
+    </tr>`;
+  }
+
+  async function deleteHousehold(id) {
+    const h = _households.find(x => x.household_id === id);
+    if (!confirm(`Delete household "${h?.customer_name}"? Their meter and all readings will also be removed. This cannot be undone.`)) return;
+    try {
+      const r = await fetch(`/households/${id}`, { method: 'DELETE' });
+      if (!r.ok) throw new Error(await r.text());
+      await Promise.all([loadHouseholds(), loadMeters(), loadAlerts()]);
+    } catch (e) { alert('Error: ' + e.message); }
+  }
+
+  async function deleteMeter(id) {
+    const m = _meters.find(x => x.meter_id === id);
+    if (!confirm(`Delete meter "${m?.meter_number}"? All readings for this meter will also be removed. This cannot be undone.`)) return;
+    try {
+      const r = await fetch(`/meters/${id}`, { method: 'DELETE' });
+      if (!r.ok) throw new Error(await r.text());
+      await loadMeters();
+    } catch (e) { alert('Error: ' + e.message); }
+  }
+
+  function startEditHousehold(id) {
+    const h = _households.find(x => x.household_id === id);
+    if (!h) return;
+    const row = document.getElementById('hrow-' + id);
+    row.innerHTML = `
+      <td>${h.household_id}</td>
+      <td><input class="form-control form-control-sm" id="ei-name-${id}" value="${escHtml(h.customer_name)}"></td>
+      <td><input class="form-control form-control-sm" id="ei-email-${id}" type="email" value="${escHtml(h.email)}"></td>
+      <td><input class="form-control form-control-sm" id="ei-phone-${id}" value="${escHtml(h.phone || '')}"></td>
+      <td><input class="form-control form-control-sm" id="ei-threshold-${id}" type="number" step="0.1" min="0.1" value="${h.daily_kwh_threshold}" style="width:90px"></td>
+      <td class="d-flex gap-1 align-items-center">
+        <button class="btn btn-success btn-sm py-0 px-2" onclick="saveHousehold(${id})">Save</button>
+        <button class="btn btn-secondary btn-sm py-0 px-2" onclick="cancelEditHousehold(${id})">Cancel</button>
+        <span id="ei-msg-${id}" class="small text-danger ms-1"></span>
+      </td>`;
+  }
+
+  function cancelEditHousehold(id) {
+    const h = _households.find(x => x.household_id === id);
+    if (!h) return;
+    document.getElementById('hrow-' + id).outerHTML = householdRow(h);
+  }
+
+  async function saveHousehold(id) {
+    const name = document.getElementById(`ei-name-${id}`).value.trim();
+    const email = document.getElementById(`ei-email-${id}`).value.trim();
+    const phone = document.getElementById(`ei-phone-${id}`).value.trim();
+    const threshold = parseFloat(document.getElementById(`ei-threshold-${id}`).value);
+    const msg = document.getElementById(`ei-msg-${id}`);
+    if (!name || !email) { msg.textContent = 'Name & email required.'; return; }
+    if (!threshold || threshold <= 0) { msg.textContent = 'Valid kWh limit required.'; return; }
+    try {
+      await api(`/households/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_name: name, email, phone: phone || null, daily_kwh_threshold: threshold }),
+      });
+      await loadHouseholds();
+    } catch (e) {
+      msg.textContent = 'Error: ' + e.message;
+    }
+  }
+
+  // ── Charts ──────────────────────────────────────────────────────────────
+  let _chartUsers = null, _chartAlerts = null, _chartUsage = null;
+
+  function buildUsersChart(households, meters) {
+    const ctx = document.getElementById('chart-users').getContext('2d');
+    if (_chartUsers) _chartUsers.destroy();
+    _chartUsers = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Households', 'Smart Meters'],
+        datasets: [{
+          label: 'Count',
+          data: [households.length, meters.length],
+          backgroundColor: ['#0d6efd99', '#20c99799'],
+          borderColor: ['#0d6efd', '#20c997'],
+          borderWidth: 2,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } } }
+      }
+    });
+  }
+
+  function buildAlertsChart(alerts) {
+    const ctx = document.getElementById('chart-alerts').getContext('2d');
+    const open = alerts.filter(a => a.status === 'OPEN').length;
+    const resolved = alerts.filter(a => a.status === 'RESOLVED').length;
+    const high = alerts.filter(a => a.severity === 'HIGH').length;
+    const medium = alerts.filter(a => a.severity === 'MEDIUM').length;
+    const low = alerts.filter(a => a.severity === 'LOW').length;
+    if (_chartAlerts) _chartAlerts.destroy();
+    _chartAlerts = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Open', 'Resolved', 'High', 'Medium', 'Low'],
+        datasets: [{
+          label: 'Alerts',
+          data: [open, resolved, high, medium, low],
+          backgroundColor: ['#dc354599','#6c757d99','#dc3545cc','#fd7e14cc','#19875499'],
+          borderColor:      ['#dc3545','#6c757d','#dc3545','#fd7e14','#198754'],
+          borderWidth: 2,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } } }
+      }
+    });
+  }
+
+  async function buildUsageChart(households) {
+    if (!households.length) return;
+    const ctx = document.getElementById('chart-usage').getContext('2d');
+    const bills = await Promise.all(
+      households.map(h => api(`/households/${h.household_id}/bill-estimate`).catch(() => null))
+    );
+    const labels = households.map(h => h.customer_name.split(' ')[0]);
+    const kwh    = bills.map(b => b ? b.total_kwh : 0);
+    const amount = bills.map(b => b ? b.estimated_bill : 0);
+    if (_chartUsage) _chartUsage.destroy();
+    _chartUsage = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'kWh', data: kwh, backgroundColor: '#0d6efd88', borderColor: '#0d6efd', borderWidth: 2, borderRadius: 4, yAxisID: 'y' },
+          { label: '₹ Bill', data: amount, backgroundColor: '#ffc10788', borderColor: '#ffc107', borderWidth: 2, borderRadius: 4, yAxisID: 'y2' },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
+        scales: {
+          y:  { beginAtZero: true, position: 'left',  title: { display: true, text: 'kWh', font: { size: 10 } } },
+          y2: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '₹', font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  async function refreshCharts(alerts) {
+    buildUsersChart(_households, _meters);
+    buildAlertsChart(alerts || []);
+    await buildUsageChart(_households);
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
+  loadAll();
+</script>
+
+</body>
+</html>
