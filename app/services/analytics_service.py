@@ -46,14 +46,14 @@ def weekly_consumption(readings: pd.DataFrame | Iterable[Mapping[str, Any]]) -> 
     df = _normalize_readings(readings)
     if df.empty:
         return pd.Series(dtype=float)
-    return df.groupby(df["timestamp"].dt.to_period("W"))["energy_consumed_kwh"].sum()
+    return df.groupby(df["timestamp"].dt.tz_localize(None).dt.to_period("W"))["energy_consumed_kwh"].sum()
 
 
 def monthly_consumption(readings: pd.DataFrame | Iterable[Mapping[str, Any]]) -> pd.Series:
     df = _normalize_readings(readings)
     if df.empty:
         return pd.Series(dtype=float)
-    return df.groupby(df["timestamp"].dt.to_period("M"))["energy_consumed_kwh"].sum()
+    return df.groupby(df["timestamp"].dt.tz_localize(None).dt.to_period("M"))["energy_consumed_kwh"].sum()
 
 
 def average_usage(readings: pd.DataFrame | Iterable[Mapping[str, Any]]) -> float:

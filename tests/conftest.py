@@ -6,8 +6,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
+import app.models  # noqa: F401 - ensure models are registered before app is bound
 from app.main import app
-import app.models  # noqa: F401 - ensure models are registered
 
 
 @pytest.fixture()

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Iterable, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -67,7 +66,7 @@ def create_alerts_for_reading(
             )
             created_alert_types.append("HIGH_USAGE")
 
-        avg_value = _get_average_usage(db, reading.meter_id)
+        avg_value = _get_average_usage(db, reading.meter_id, exclude_reading_id=reading.reading_id)
         if avg_value and value > (thresholds.spike_multiplier * avg_value):
             _create_alert(
                 db,
@@ -119,29 +118,6 @@ def create_alerts_for_reading(
             db.close()
 
 
-def check_alerts_for_reading(reading: Dict):
-    """Backward-compatible helper for any direct dict-based checks."""
-
-    value = float(reading.get("energy_consumed_kwh", 0) or 0)
-    if value > DEFAULT_HIGH_USAGE_THRESHOLD:
-        print(f"[ALERT] HIGH_USAGE for meter {reading.get('meter_id')}: {value} kWh")
-
-
-def create_alert_from_summary(
-    household_id: Optional[int],
-    meter_id: Optional[int],
-    alert_type: str,
-    message: str,
-    severity: str = "MEDIUM",
-) -> None:
-    """Public helper for creating a single alert record."""
-
-    db = SessionLocal()
-    try:
-        _create_alert(db, household_id, meter_id, alert_type, message, severity)
-    finally:
-        db.close()
-
 
 def _create_alert(db, household_id, meter_id, alert_type, message, severity):
     existing = db.scalar(
@@ -170,10 +146,11 @@ def _create_alert(db, household_id, meter_id, alert_type, message, severity):
     return alert
 
 
-def _get_average_usage(db, meter_id: int) -> float:
-    readings = db.scalars(
-        select(models.MeterReading.energy_consumed_kwh).where(models.MeterReading.meter_id == meter_id)
-    ).all()
+def _get_average_usage(db, meter_id: int, exclude_reading_id: int | None = None) -> float:
+    q = select(models.MeterReading.energy_consumed_kwh).where(models.MeterReading.meter_id == meter_id)
+    if exclude_reading_id is not None:
+        q = q.where(models.MeterReading.reading_id != exclude_reading_id)
+    readings = db.scalars(q).all()
     if not readings:
         return 0.0
     return sum(float(r or 0) for r in readings) / len(readings)
