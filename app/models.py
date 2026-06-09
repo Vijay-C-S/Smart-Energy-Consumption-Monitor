@@ -3,6 +3,9 @@ from sqlalchemy.sql import func
 from .database import Base
 from sqlalchemy.orm import relationship
 
+# ALL DATABASE TABLES are defined in this file
+
+# TABLE: households - stores customer info, login credentials, daily kWh limit
 class Household(Base):
     __tablename__ = 'households'
     household_id = Column(Integer, primary_key=True, index=True)
@@ -10,12 +13,13 @@ class Household(Base):
     email = Column(String(100), unique=True, nullable=False)
     phone = Column(String(20))
     address = Column(Text)
-    daily_kwh_threshold = Column(Float, nullable=False, default=20.0)
-    password_hash = Column(String(200), nullable=True)
+    daily_kwh_threshold = Column(Float, nullable=False, default=20.0)  # daily limit threshold
+    password_hash = Column(String(200), nullable=True)  # password storage
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     meters = relationship('SmartMeter', back_populates='household', cascade='all, delete-orphan')
     alerts = relationship('Alert', cascade='all, delete-orphan')
 
+# TABLE: smart_meters - one meter per household (enforced by unique=True on household_id)
 class SmartMeter(Base):
     __tablename__ = 'smart_meters'
     meter_id = Column(Integer, primary_key=True, index=True)
@@ -26,6 +30,7 @@ class SmartMeter(Base):
     household = relationship('Household', back_populates='meters')
     readings = relationship('MeterReading', back_populates='meter', cascade='all, delete-orphan')
 
+# TABLE: meter_readings - raw energy readings (kWh, voltage, current, power_factor)
 class MeterReading(Base):
     __tablename__ = 'meter_readings'
     reading_id = Column(Integer, primary_key=True, index=True)
@@ -37,6 +42,7 @@ class MeterReading(Base):
     power_factor = Column(Float)
     meter = relationship('SmartMeter', back_populates='readings')
 
+# TABLE: alerts - system-generated warnings (HIGH_USAGE, SPIKE_DETECTED, DAILY_LIMIT_EXCEEDED, MONTHLY_BILL_WARNING)
 class Alert(Base):
     __tablename__ = 'alerts'
     alert_id = Column(Integer, primary_key=True, index=True)
@@ -45,9 +51,10 @@ class Alert(Base):
     alert_type = Column(String(50))
     message = Column(Text)
     severity = Column(String(20))
-    status = Column(String(20), default='OPEN')
+    status = Column(String(20), default='OPEN')  # alert status: OPEN or RESOLVED
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+# TABLE: tariff_config - electricity rate per kWh used for bill estimation
 class TariffConfig(Base):
     __tablename__ = 'tariff_config'
     tariff_id = Column(Integer, primary_key=True, index=True)

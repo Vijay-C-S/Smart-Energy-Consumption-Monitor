@@ -5,9 +5,12 @@ from sqlalchemy import select
 from ..database import get_db
 from .. import models, schemas
 
+# REPORTS ENDPOINTS - monthly usage report and bill estimate
+
 router = APIRouter()
 
 
+# MONTHLY REPORT - GET /reports/monthly/{household_id} (total, average, peak kWh)
 @router.get("/monthly/{household_id}", response_model=schemas.MonthlyReportOut)
 def monthly_report(household_id: int, db: Session = Depends(get_db)):
     meter_ids = db.scalars(
@@ -37,6 +40,7 @@ def monthly_report(household_id: int, db: Session = Depends(get_db)):
     )
 
 
+# BILL ESTIMATE (reports) - GET /reports/bill-estimate/{household_id}
 @router.get("/bill-estimate/{household_id}", response_model=schemas.BillEstimateOut)
 def bill_estimate(household_id: int, db: Session = Depends(get_db)):
     total_kwh = 0.0

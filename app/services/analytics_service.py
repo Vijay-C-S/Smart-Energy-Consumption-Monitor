@@ -5,6 +5,8 @@ from typing import Iterable, Mapping, Any
 
 import pandas as pd
 
+# ANALYTICS SERVICE - pure functions for consumption analysis using pandas
+# FUNCTIONS: daily_consumption, weekly_consumption, monthly_consumption, average_usage, peak_usage, estimated_monthly_bill, consumption_report
 
 DEFAULT_RATE_PER_KWH = 8.0
 

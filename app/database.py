@@ -2,6 +2,7 @@ import os
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
 
+# DATABASE CONNECTION setup - uses SQLite by default, swappable via DATABASE_URL env var
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")
 
 connect_args = { }
@@ -14,12 +15,14 @@ if DATABASE_URL.startswith("sqlite"):
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA foreign_keys=ON")  # enforce foreign key constraints in SQLite
         cursor.close()
+
+# SESSION FACTORY - used by get_db() dependency in every endpoint
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Dependency for FastAPI endpoints
+# DB DEPENDENCY - injected into every route via Depends(get_db), auto-closes after request
 def get_db():
     db = SessionLocal()
     try:
