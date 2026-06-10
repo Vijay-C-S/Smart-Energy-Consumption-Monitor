@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 from ..database import get_db
 from ..models import Household
-import hashlib, os, base64
+import hashlib, os, base64, re
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -45,10 +45,18 @@ class AuthResponse(BaseModel):
     email: str
 
 
+def _validate_password(password: str):
+    if not re.search(r'[A-Z]', password):
+        raise HTTPException(status_code=400, detail="Password must contain at least 1 uppercase letter")
+    if not re.search(r'[a-z]', password):
+        raise HTTPException(status_code=400, detail="Password must contain at least 1 lowercase letter")
+    if not re.search(r'[0-9]', password):
+        raise HTTPException(status_code=400, detail="Password must contain at least 1 number")
+
+
 @router.post("/register", response_model=AuthResponse)
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
-    if len(data.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    _validate_password(data.password)
 
     existing = db.query(Household).filter(Household.email == data.email).first()
 

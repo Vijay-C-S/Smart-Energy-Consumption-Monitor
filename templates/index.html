@@ -20,17 +20,48 @@
     .badge-RESOLVED { background: #6c757d; }
     .chart-card { height: 280px; display: flex; align-items: center; justify-content: center; }
     .chart-card canvas { max-height: 240px; }
+    #login-overlay {
+      position: fixed; inset: 0; background: rgba(13,110,253,.08);
+      backdrop-filter: blur(4px); z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #login-box {
+      background: #fff; border-radius: 12px; padding: 2rem 2.5rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,.15); width: 100%; max-width: 360px;
+    }
   </style>
 </head>
 <body>
+
+<!-- Login Overlay -->
+<div id="login-overlay">
+  <div id="login-box">
+    <div class="text-center mb-4">
+      <span style="font-size:2rem">⚡</span>
+      <h5 class="fw-bold mt-1 mb-0">Smart Energy Monitor</h5>
+      <small class="text-muted">Admin Panel Login</small>
+    </div>
+    <div class="mb-3">
+      <label class="form-label small fw-semibold">Username</label>
+      <input type="text" id="login-user" class="form-control" placeholder="Enter username" autocomplete="username">
+    </div>
+    <div class="mb-3">
+      <label class="form-label small fw-semibold">Password</label>
+      <input type="password" id="login-pass" class="form-control" placeholder="Enter password" autocomplete="current-password">
+    </div>
+    <div id="login-err" class="text-danger small mb-2" style="min-height:1.2em"></div>
+    <button class="btn btn-primary w-100" onclick="doLogin()">Login</button>
+  </div>
+</div>
 
 <nav class="navbar navbar-dark bg-primary px-4 mb-4">
   <div class="d-flex align-items-center gap-2">
     <span class="navbar-brand fw-bold fs-5 mb-0">⚡ Smart Energy Monitor</span>
     <span class="badge bg-warning text-dark">Admin Panel</span>
   </div>
-  <div class="d-flex align-items-center gap-3">
+  <div class="d-flex align-items-center gap-2">
     <a href="/user" class="btn btn-outline-light btn-sm">User Portal</a>
+    <button class="btn btn-danger btn-sm" onclick="doLogout()">Logout</button>
   </div>
 </nav>
 
@@ -547,7 +578,36 @@
   }
   // ────────────────────────────────────────────────────────────────────────
 
-  loadAll();
+  // ── Admin Auth ───────────────────────────────────────────────────────────
+  function doLogin() {
+    const user = document.getElementById('login-user').value.trim();
+    const pass = document.getElementById('login-pass').value;
+    if (user === 'cognizant' && pass === 'admin') {
+      sessionStorage.setItem('adminAuth', '1');
+      document.getElementById('login-overlay').style.display = 'none';
+      loadAll();
+    } else {
+      document.getElementById('login-err').textContent = 'Invalid username or password.';
+    }
+  }
+
+  function doLogout() {
+    sessionStorage.removeItem('adminAuth');
+    document.getElementById('login-user').value = '';
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-err').textContent = '';
+    document.getElementById('login-overlay').style.display = 'flex';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('login-overlay').style.display !== 'none') doLogin();
+  });
+
+  if (sessionStorage.getItem('adminAuth') === '1') {
+    document.getElementById('login-overlay').style.display = 'none';
+    loadAll();
+  }
+  // ────────────────────────────────────────────────────────────────────────
 </script>
 
 </body>

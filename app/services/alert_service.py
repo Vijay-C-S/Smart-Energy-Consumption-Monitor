@@ -9,13 +9,9 @@ from sqlalchemy.orm import Session
 from ..database import SessionLocal
 from .. import models
 
-# ALERT SERVICE - auto-generates alerts whenever a new reading is submitted
-# ALERT TYPES: HIGH_USAGE, SPIKE_DETECTED, DAILY_LIMIT_EXCEEDED, MONTHLY_BILL_WARNING
-
-# ALERT THRESHOLDS - default values used to decide when to fire each alert type
-DEFAULT_HIGH_USAGE_THRESHOLD = 3.0       # single reading > 3.0 kWh triggers HIGH_USAGE
-DEFAULT_MONTHLY_BILL_WARNING = 3000.0    # estimated bill > ₹3000 triggers MONTHLY_BILL_WARNING
-DEFAULT_SPIKE_MULTIPLIER = 2.0           # reading > 2x average triggers SPIKE_DETECTED
+DEFAULT_HIGH_USAGE_THRESHOLD = 3.0
+DEFAULT_MONTHLY_BILL_WARNING = 3000.0
+DEFAULT_SPIKE_MULTIPLIER = 2.0
 DEFAULT_RATE_PER_KWH = 8.0
 
 
@@ -27,16 +23,11 @@ class AlertThresholds:
     rate_per_kwh: float = DEFAULT_RATE_PER_KWH
 
 
-# MAIN ALERT FUNCTION - called as background task after every POST /readings/
 def create_alerts_for_reading(
     reading_id: int,
     thresholds: AlertThresholds = AlertThresholds(),
     db: Session | None = None,
 ) -> list[str]:
-    """Evaluate all alert rules for a stored reading.
-
-    Returns a list of alert types created for easier testing and logging.
-    """
     owns_session = db is None
     db = db or SessionLocal()
     created_alert_types: list[str] = []
@@ -120,7 +111,6 @@ def create_alerts_for_reading(
     finally:
         if owns_session:
             db.close()
-
 
 
 def _create_alert(db, household_id, meter_id, alert_type, message, severity):

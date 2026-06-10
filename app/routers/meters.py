@@ -6,12 +6,9 @@ from typing import List
 from ..database import get_db
 from .. import schemas, models
 
-# METER ENDPOINTS - register, list, get, delete smart meters
-
 router = APIRouter()
 
 
-# REGISTER METER - POST /meters/ (one meter per household enforced here)
 @router.post("/", response_model=schemas.MeterOut, status_code=201)
 def register_meter(payload: schemas.MeterCreate, db: Session = Depends(get_db)):
     household = db.get(models.Household, payload.household_id)
@@ -33,13 +30,11 @@ def register_meter(payload: schemas.MeterCreate, db: Session = Depends(get_db)):
     return meter
 
 
-# LIST METERS - GET /meters/
 @router.get("/", response_model=List[schemas.MeterOut])
 def list_meters(db: Session = Depends(get_db)):
     return db.scalars(select(models.SmartMeter).order_by(models.SmartMeter.meter_id)).all()
 
 
-# GET SINGLE METER - GET /meters/{meter_id}
 @router.get("/{meter_id}", response_model=schemas.MeterOut)
 def get_meter(meter_id: int, db: Session = Depends(get_db)):
     meter = db.get(models.SmartMeter, meter_id)
@@ -48,7 +43,6 @@ def get_meter(meter_id: int, db: Session = Depends(get_db)):
     return meter
 
 
-# DELETE METER - DELETE /meters/{meter_id}
 @router.delete("/{meter_id}", status_code=204)
 def delete_meter(meter_id: int, db: Session = Depends(get_db)):
     meter = db.get(models.SmartMeter, meter_id)

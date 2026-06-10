@@ -7,12 +7,9 @@ from ..database import get_db
 from .. import schemas, models
 from .auth import _hash_password
 
-# HOUSEHOLD ENDPOINTS - all CRUD + nested resources for a household
-
 router = APIRouter()
 
 
-# CREATE HOUSEHOLD - POST /households/ (checks duplicate email, sets default password "admin")
 @router.post("/", response_model=schemas.HouseholdOut, status_code=201)
 def create_household(payload: schemas.HouseholdCreate, db: Session = Depends(get_db)):
     existing = db.scalar(select(models.Household).where(models.Household.email == payload.email))
@@ -26,13 +23,11 @@ def create_household(payload: schemas.HouseholdCreate, db: Session = Depends(get
     return household
 
 
-# LIST HOUSEHOLDS - GET /households/
 @router.get("/", response_model=List[schemas.HouseholdOut])
 def list_households(db: Session = Depends(get_db)):
     return db.scalars(select(models.Household).order_by(models.Household.household_id.desc())).all()
 
 
-# GET SINGLE HOUSEHOLD - GET /households/{household_id}
 @router.get("/{household_id}", response_model=schemas.HouseholdOut)
 def get_household(household_id: int, db: Session = Depends(get_db)):
     household = db.get(models.Household, household_id)
@@ -41,7 +36,6 @@ def get_household(household_id: int, db: Session = Depends(get_db)):
     return household
 
 
-# UPDATE HOUSEHOLD - PUT /households/{household_id} (partial update, checks email uniqueness)
 @router.put("/{household_id}", response_model=schemas.HouseholdOut)
 def update_household(household_id: int, payload: schemas.HouseholdUpdate, db: Session = Depends(get_db)):
     household = db.get(models.Household, household_id)
@@ -58,7 +52,6 @@ def update_household(household_id: int, payload: schemas.HouseholdUpdate, db: Se
     return household
 
 
-# DELETE HOUSEHOLD - DELETE /households/{household_id}
 @router.delete("/{household_id}", status_code=204)
 def delete_household(household_id: int, db: Session = Depends(get_db)):
     household = db.get(models.Household, household_id)
@@ -69,7 +62,6 @@ def delete_household(household_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
-# GET HOUSEHOLD READINGS - GET /households/{household_id}/readings
 @router.get("/{household_id}/readings", response_model=List[schemas.ReadingOut])
 def get_household_readings(household_id: int, db: Session = Depends(get_db)):
     rows = (
@@ -85,7 +77,6 @@ def get_household_readings(household_id: int, db: Session = Depends(get_db)):
     return rows
 
 
-# GET HOUSEHOLD ALERTS - GET /households/{household_id}/alerts
 @router.get("/{household_id}/alerts", response_model=List[schemas.AlertOut])
 def get_household_alerts(household_id: int, db: Session = Depends(get_db)):
     return (
@@ -98,7 +89,6 @@ def get_household_alerts(household_id: int, db: Session = Depends(get_db)):
     )
 
 
-# BILL ESTIMATE (household) - GET /households/{household_id}/bill-estimate
 @router.get("/{household_id}/bill-estimate", response_model=schemas.BillEstimateOut)
 def get_household_bill_estimate(household_id: int, db: Session = Depends(get_db)):
     total_kwh = _get_household_total_kwh(db, household_id)
@@ -120,7 +110,6 @@ def _get_household_total_kwh(db: Session, household_id: int) -> float:
     return round(sum(row[0] or 0 for row in result), 4)
 
 
-# TARIFF RATE LOOKUP - fetches latest rate from tariff_config, defaults to 8.0 if none set
 def _get_current_rate(db: Session) -> float:
     tariff = db.scalars(select(models.TariffConfig).order_by(models.TariffConfig.effective_from.desc())).first()
     return float(tariff.rate_per_kwh) if tariff else 8.0

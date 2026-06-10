@@ -7,12 +7,9 @@ from ..database import get_db
 from .. import schemas, models
 from ..services import alert_service
 
-# READINGS ENDPOINTS - submit and retrieve energy readings
-
 router = APIRouter()
 
 
-# SUBMIT READING - POST /readings/ (saves reading, then triggers alert checks in background)
 @router.post("/", response_model=schemas.ReadingOut, status_code=201)
 def post_reading(
     payload: schemas.ReadingCreate,
@@ -28,12 +25,10 @@ def post_reading(
     db.commit()
     db.refresh(reading)
 
-    # BACKGROUND ALERT CHECK - alert_service runs after response is returned to caller
     background_tasks.add_task(alert_service.create_alerts_for_reading, reading.reading_id, db=db)
     return reading
 
 
-# GET READINGS BY METER - GET /readings/meter/{meter_id}
 @router.get("/meter/{meter_id}", response_model=List[schemas.ReadingOut])
 def get_meter_readings(meter_id: int, db: Session = Depends(get_db)):
     meter = db.get(models.SmartMeter, meter_id)
@@ -46,7 +41,6 @@ def get_meter_readings(meter_id: int, db: Session = Depends(get_db)):
     ).all()
 
 
-# GET READINGS BY HOUSEHOLD - GET /readings/household/{household_id}
 @router.get("/household/{household_id}", response_model=List[schemas.ReadingOut])
 def get_household_readings(household_id: int, db: Session = Depends(get_db)):
     return (

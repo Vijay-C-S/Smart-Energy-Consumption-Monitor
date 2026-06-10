@@ -102,7 +102,12 @@
             <input type="email" class="form-control" id="r-email" placeholder="Email *">
           </div>
           <div class="col-12">
-            <input type="password" class="form-control" id="r-password" placeholder="Password * (min 6 chars)">
+            <input type="password" class="form-control" id="r-password" placeholder="Password *" oninput="checkPwdStrength(this.value)">
+            <div id="pwd-hints" class="mt-1 d-flex gap-2 flex-wrap" style="font-size:.75rem">
+              <span id="ph-upper" class="text-danger">✗ Uppercase</span>
+              <span id="ph-lower" class="text-danger">✗ Lowercase</span>
+              <span id="ph-num"   class="text-danger">✗ Number</span>
+            </div>
           </div>
           <div class="col-6">
             <input class="form-control" id="r-phone" placeholder="Phone">
@@ -267,12 +272,30 @@
     } catch (e) { setMsg(msg, extractError(e), false); }
   }
 
+  function checkPwdStrength(val) {
+    const hasUpper = /[A-Z]/.test(val);
+    const hasLower = /[a-z]/.test(val);
+    const hasNum   = /[0-9]/.test(val);
+    const set = (id, ok) => {
+      const el = document.getElementById(id);
+      el.textContent = (ok ? '✓ ' : '✗ ') + el.textContent.slice(2);
+      el.className = ok ? 'text-success' : 'text-danger';
+    };
+    set('ph-upper', hasUpper);
+    set('ph-lower', hasLower);
+    set('ph-num',   hasNum);
+    return hasUpper && hasLower && hasNum;
+  }
+
   async function doRegister() {
     const name     = document.getElementById('r-name').value.trim();
     const email    = document.getElementById('r-email').value.trim();
     const password = document.getElementById('r-password').value;
     const msg      = document.getElementById('r-msg');
     if (!name || !email || !password) { setMsg(msg, 'Name, email and password are required.', false); return; }
+    if (!checkPwdStrength(password)) {
+      setMsg(msg, 'Password must have at least 1 uppercase, 1 lowercase, and 1 number.', false); return;
+    }
     const threshold = parseFloat(document.getElementById('r-threshold').value) || 20;
     try {
       const res = await apiPost('/auth/register', {

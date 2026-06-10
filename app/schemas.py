@@ -2,9 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 
-# ALL REQUEST/RESPONSE SCHEMAS (Pydantic validation) are defined in this file
 
-# SCHEMA: Household - create, update, and response shapes
 class HouseholdCreate(BaseModel):
     customer_name: str
     email: str
@@ -25,7 +23,7 @@ class HouseholdOut(HouseholdCreate):
     household_id: int
     created_at: datetime
 
-# SCHEMA: SmartMeter - register a meter and response shape
+
 class MeterCreate(BaseModel):
     household_id: int
     meter_number: str
@@ -38,7 +36,7 @@ class MeterOut(MeterCreate):
     status: Optional[str] = "ACTIVE"
     installed_date: Optional[datetime]
 
-# SCHEMA: MeterReading - submit a reading (energy_consumed_kwh must be > 0)
+
 class ReadingCreate(BaseModel):
     meter_id: int
     energy_consumed_kwh: float = Field(..., gt=0)
@@ -53,7 +51,7 @@ class ReadingOut(ReadingCreate):
     reading_id: int
     timestamp: datetime
 
-# SCHEMA: Alert - create and response shape (severity: LOW/MEDIUM/HIGH, status: OPEN/RESOLVED)
+
 class AlertOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -76,7 +74,6 @@ class AlertCreate(BaseModel):
     status: str = "OPEN"
 
 
-# SCHEMA: BillEstimateOut - total kWh * rate_per_kwh = estimated_bill
 class BillEstimateOut(BaseModel):
     household_id: int
     total_kwh: float
@@ -84,7 +81,6 @@ class BillEstimateOut(BaseModel):
     estimated_bill: float
 
 
-# SCHEMA: MonthlyReportOut - aggregated stats: total, average, peak kWh
 class MonthlyReportOut(BaseModel):
     household_id: int
     total_kwh: float
