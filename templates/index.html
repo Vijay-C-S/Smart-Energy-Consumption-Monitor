@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Smart Energy Monitor</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <style>
     body { background: #f0f2f5; }
     .card { border: none; box-shadow: 0 1px 4px rgba(0,0,0,.1); border-radius: 8px; }
@@ -18,8 +17,7 @@
     .badge-LOW { background: #198754; }
     .badge-OPEN { background: #dc3545; }
     .badge-RESOLVED { background: #6c757d; }
-    .chart-card { height: 280px; display: flex; align-items: center; justify-content: center; }
-    .chart-card canvas { max-height: 240px; }
+
     #login-overlay {
       position: fixed; inset: 0; background: rgba(13,110,253,.08);
       backdrop-filter: blur(4px); z-index: 9999;
@@ -95,27 +93,7 @@
     </div>
   </div>
 
-  <!-- Charts Row -->
-  <div class="row g-3 mb-4">
-    <div class="col-4">
-      <div class="card p-3">
-        <div class="section-title">Users Overview</div>
-        <div class="chart-card"><canvas id="chart-users"></canvas></div>
-      </div>
-    </div>
-    <div class="col-4">
-      <div class="card p-3">
-        <div class="section-title">Alerts Status</div>
-        <div class="chart-card"><canvas id="chart-alerts"></canvas></div>
-      </div>
-    </div>
-    <div class="col-4">
-      <div class="card p-3">
-        <div class="section-title">Usage &amp; Bills per Household</div>
-        <div class="chart-card"><canvas id="chart-usage"></canvas></div>
-      </div>
-    </div>
-  </div>
+
 
   <div class="row g-4">
 
@@ -230,7 +208,6 @@
     let alerts = [];
     try { alerts = await api('/alerts/'); } catch {}
     await loadAlerts();
-    await refreshCharts(alerts);
   }
 
   async function loadHouseholds() {
@@ -485,98 +462,7 @@
     }
   }
 
-  // ── Charts ──────────────────────────────────────────────────────────────
-  let _chartUsers = null, _chartAlerts = null, _chartUsage = null;
 
-  function buildUsersChart(households, meters) {
-    const ctx = document.getElementById('chart-users').getContext('2d');
-    if (_chartUsers) _chartUsers.destroy();
-    _chartUsers = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Households', 'Smart Meters'],
-        datasets: [{
-          label: 'Count',
-          data: [households.length, meters.length],
-          backgroundColor: ['#0d6efd99', '#20c99799'],
-          borderColor: ['#0d6efd', '#20c997'],
-          borderWidth: 2,
-          borderRadius: 6,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } } }
-      }
-    });
-  }
-
-  function buildAlertsChart(alerts) {
-    const ctx = document.getElementById('chart-alerts').getContext('2d');
-    const open = alerts.filter(a => a.status === 'OPEN').length;
-    const resolved = alerts.filter(a => a.status === 'RESOLVED').length;
-    const high = alerts.filter(a => a.severity === 'HIGH').length;
-    const medium = alerts.filter(a => a.severity === 'MEDIUM').length;
-    const low = alerts.filter(a => a.severity === 'LOW').length;
-    if (_chartAlerts) _chartAlerts.destroy();
-    _chartAlerts = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: ['Open', 'Resolved', 'High', 'Medium', 'Low'],
-        datasets: [{
-          label: 'Alerts',
-          data: [open, resolved, high, medium, low],
-          backgroundColor: ['#dc354599','#6c757d99','#dc3545cc','#fd7e14cc','#19875499'],
-          borderColor:      ['#dc3545','#6c757d','#dc3545','#fd7e14','#198754'],
-          borderWidth: 2,
-          borderRadius: 6,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } } }
-      }
-    });
-  }
-
-  async function buildUsageChart(households) {
-    if (!households.length) return;
-    const ctx = document.getElementById('chart-usage').getContext('2d');
-    const bills = await Promise.all(
-      households.map(h => api(`/households/${h.household_id}/bill-estimate`).catch(() => null))
-    );
-    const labels = households.map(h => h.customer_name.split(' ')[0]);
-    const kwh    = bills.map(b => b ? b.total_kwh : 0);
-    const amount = bills.map(b => b ? b.estimated_bill : 0);
-    if (_chartUsage) _chartUsage.destroy();
-    _chartUsage = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          { label: 'kWh', data: kwh, backgroundColor: '#0d6efd88', borderColor: '#0d6efd', borderWidth: 2, borderRadius: 4, yAxisID: 'y' },
-          { label: '₹ Bill', data: amount, backgroundColor: '#ffc10788', borderColor: '#ffc107', borderWidth: 2, borderRadius: 4, yAxisID: 'y2' },
-        ]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
-        scales: {
-          y:  { beginAtZero: true, position: 'left',  title: { display: true, text: 'kWh', font: { size: 10 } } },
-          y2: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '₹', font: { size: 10 } } }
-        }
-      }
-    });
-  }
-
-  async function refreshCharts(alerts) {
-    buildUsersChart(_households, _meters);
-    buildAlertsChart(alerts || []);
-    await buildUsageChart(_households);
-  }
-  // ────────────────────────────────────────────────────────────────────────
 
   // ── Admin Auth ───────────────────────────────────────────────────────────
   function doLogin() {
