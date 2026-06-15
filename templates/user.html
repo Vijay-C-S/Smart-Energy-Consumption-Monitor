@@ -104,6 +104,7 @@
           <div class="col-12">
             <input type="password" class="form-control" id="r-password" placeholder="Password *" oninput="checkPwdStrength(this.value)">
             <div id="pwd-hints" class="mt-1 d-flex gap-2 flex-wrap" style="font-size:.75rem">
+              <span id="ph-len"   class="text-danger">✗ 8+ characters</span>
               <span id="ph-upper" class="text-danger">✗ Uppercase</span>
               <span id="ph-lower" class="text-danger">✗ Lowercase</span>
               <span id="ph-num"   class="text-danger">✗ Number</span>
@@ -273,6 +274,7 @@
   }
 
   function checkPwdStrength(val) {
+    const hasLen   = val.length >= 8;
     const hasUpper = /[A-Z]/.test(val);
     const hasLower = /[a-z]/.test(val);
     const hasNum   = /[0-9]/.test(val);
@@ -281,10 +283,11 @@
       el.textContent = (ok ? '✓ ' : '✗ ') + el.textContent.slice(2);
       el.className = ok ? 'text-success' : 'text-danger';
     };
+    set('ph-len',   hasLen);
     set('ph-upper', hasUpper);
     set('ph-lower', hasLower);
     set('ph-num',   hasNum);
-    return hasUpper && hasLower && hasNum;
+    return hasLen && hasUpper && hasLower && hasNum;
   }
 
   async function doRegister() {
@@ -294,7 +297,7 @@
     const msg      = document.getElementById('r-msg');
     if (!name || !email || !password) { setMsg(msg, 'Name, email and password are required.', false); return; }
     if (!checkPwdStrength(password)) {
-      setMsg(msg, 'Password must have at least 1 uppercase, 1 lowercase, and 1 number.', false); return;
+      setMsg(msg, 'Password must be at least 8 characters and include 1 uppercase, 1 lowercase, and 1 number.', false); return;
     }
     const threshold = parseFloat(document.getElementById('r-threshold').value) || 20;
     try {
