@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from ..database import get_db
 from ..models import Household
@@ -26,12 +26,21 @@ def _verify_password(password: str, stored: str) -> bool:
 
 
 class RegisterRequest(BaseModel):
-    customer_name: str
-    email: str
+    customer_name: str = Field(
+        ...,
+        min_length=2,
+        max_length=100,
+        pattern=r"^[A-Za-z][A-Za-z .'-]*$",
+    )
+    email: str = Field(
+        ...,
+        max_length=100,
+        pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$",
+    )
     password: str
-    phone: Optional[str] = None
+    phone: Optional[str] = Field(default=None, pattern=r"^\d{10}$")
     address: Optional[str] = None
-    daily_kwh_threshold: float = 20.0
+    daily_kwh_threshold: float = Field(default=20.0, gt=0)
 
 
 class LoginRequest(BaseModel):

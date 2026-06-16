@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Smart Energy Monitor</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <style>
     body { background: #f0f2f5; }
     .card { border: none; box-shadow: 0 1px 4px rgba(0,0,0,.1); border-radius: 8px; }
@@ -17,6 +18,8 @@
     .badge-LOW { background: #198754; }
     .badge-OPEN { background: #dc3545; }
     .badge-RESOLVED { background: #6c757d; }
+    .chart-card { height: 280px; display: flex; align-items: center; justify-content: center; }
+    .chart-card canvas { max-height: 240px; }
 
     #login-overlay {
       position: fixed; inset: 0; background: rgba(13,110,253,.08);
@@ -93,7 +96,27 @@
     </div>
   </div>
 
-
+<!-- Charts Row -->
+  <div class="row g-3 mb-4">
+    <div class="col-4">
+      <div class="card p-3">
+        <div class="section-title">Users Overview</div>
+        <div class="chart-card"><canvas id="chart-users"></canvas></div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="card p-3">
+        <div class="section-title">Alerts Status</div>
+        <div class="chart-card"><canvas id="chart-alerts"></canvas></div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="card p-3">
+        <div class="section-title">Usage &amp; Bills per Household</div>
+        <div class="chart-card"><canvas id="chart-usage"></canvas></div>
+      </div>
+    </div>
+  </div>
 
   <div class="row g-4">
 
@@ -111,9 +134,9 @@
         </div>
         <div class="text-muted small fw-semibold mb-2">Add Household</div>
         <div class="row g-2">
-          <div class="col-6"><input class="form-control form-control-sm" id="h-name" placeholder="Name *"></div>
+          <div class="col-6"><input class="form-control form-control-sm" id="h-name" placeholder="Name *" pattern="[A-Za-z][A-Za-z .'-]*" title="Use letters, spaces, apostrophes, periods, and hyphens only"></div>
           <div class="col-6"><input class="form-control form-control-sm" id="h-email" type="email" placeholder="Email *"></div>
-          <div class="col-6"><input class="form-control form-control-sm" id="h-phone" placeholder="Phone"></div>
+          <div class="col-6"><input class="form-control form-control-sm" id="h-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="Phone (10 digits)"></div>
           <div class="col-6"><input class="form-control form-control-sm" id="h-address" placeholder="Address"></div>
           <div class="col-6"><input class="form-control form-control-sm" id="h-threshold" type="number" step="0.1" min="0.1" placeholder="Daily kWh limit *" value="20"></div>
           <div class="col-12 d-flex align-items-center gap-2">
@@ -139,7 +162,7 @@
               <option value="">Select Household *</option>
             </select>
           </div>
-          <div class="col-6"><input class="form-control form-control-sm" id="m-number" placeholder="Meter # (e.g. MTR-1001) *"></div>
+          <div class="col-6"><input class="form-control form-control-sm" id="m-number" placeholder="Meter # (e.g. MTR-1001) *" pattern="[A-Za-z0-9][A-Za-z0-9-]*" title="Use letters, numbers, and hyphens only"></div>
           <div class="col-12 d-flex align-items-center gap-2">
             <button class="btn btn-primary btn-sm" onclick="addMeter()">Register</button>
             <span id="m-msg" class="small"></span>
@@ -191,11 +214,17 @@
 
     </div>
   </div>
+
+
 </div>
 
 <script>
   let _households = [];
   let _meters = [];
+  const NAME_RE = /^[A-Za-z][A-Za-z .'-]*$/;
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const PHONE_RE = /^\d{10}$/;
+  const METER_RE = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
 
   async function api(path, opts) {
     const r = await fetch(path, opts);
@@ -208,6 +237,7 @@
     let alerts = [];
     try { alerts = await api('/alerts/'); } catch {}
     await loadAlerts();
+    await refreshCharts(alerts);
   }
 
   async function loadHouseholds() {
@@ -291,16 +321,20 @@
     const msg = document.getElementById('h-msg');
     const name = document.getElementById('h-name').value.trim();
     const email = document.getElementById('h-email').value.trim();
+    const phone = document.getElementById('h-phone').value.trim();
     const threshold = parseFloat(document.getElementById('h-threshold').value);
     if (!name || !email) { msg.className = 'small text-danger'; msg.textContent = 'Name and email required.'; return; }
-    if (!threshold || threshold <= 0) { msg.className = 'small text-danger'; msg.textContent = 'Daily kWh limit required.'; return; }
+    if (!NAME_RE.test(name)) { msg.className = 'small text-danger'; msg.textContent = 'Name can only use letters, spaces, apostrophes, periods, and hyphens.'; return; }
+    if (!EMAIL_RE.test(email)) { msg.className = 'small text-danger'; msg.textContent = 'Enter a valid email address.'; return; }
+    if (phone && !PHONE_RE.test(phone)) { msg.className = 'small text-danger'; msg.textContent = 'Phone number must be exactly 10 digits.'; return; }
+    if (!threshold || threshold <= 0) { msg.className = 'small text-danger'; msg.textContent = 'Daily kWh limit must be greater than 0.'; return; }
     try {
       await api('/households/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer_name: name, email,
-          phone: document.getElementById('h-phone').value.trim() || null,
+          phone: phone || null,
           address: document.getElementById('h-address').value.trim() || null,
           daily_kwh_threshold: threshold,
         }),
@@ -317,7 +351,8 @@
     const msg = document.getElementById('m-msg');
     const householdId = parseInt(document.getElementById('m-household').value);
     const number = document.getElementById('m-number').value.trim();
-    if (!householdId || !number) { msg.className = 'small text-danger'; msg.textContent = 'All fields required.'; return; }
+    if (!householdId || !number) { msg.className = 'small text-danger'; msg.textContent = 'Household and meter number are required.'; return; }
+    if (!METER_RE.test(number)) { msg.className = 'small text-danger'; msg.textContent = 'Meter number can only include letters, numbers, and hyphens.'; return; }
     try {
       await api('/meters/', {
         method: 'POST',
@@ -425,9 +460,9 @@
     const row = document.getElementById('hrow-' + id);
     row.innerHTML = `
       <td>${h.household_id}</td>
-      <td><input class="form-control form-control-sm" id="ei-name-${id}" value="${escHtml(h.customer_name)}"></td>
+      <td><input class="form-control form-control-sm" id="ei-name-${id}" value="${escHtml(h.customer_name)}" pattern="[A-Za-z][A-Za-z .'-]*" title="Use letters, spaces, apostrophes, periods, and hyphens only"></td>
       <td><input class="form-control form-control-sm" id="ei-email-${id}" type="email" value="${escHtml(h.email)}"></td>
-      <td><input class="form-control form-control-sm" id="ei-phone-${id}" value="${escHtml(h.phone || '')}"></td>
+      <td><input class="form-control form-control-sm" id="ei-phone-${id}" type="tel" inputmode="numeric" maxlength="10" value="${escHtml(h.phone || '')}" placeholder="10 digits"></td>
       <td><input class="form-control form-control-sm" id="ei-threshold-${id}" type="number" step="0.1" min="0.1" value="${h.daily_kwh_threshold}" style="width:90px"></td>
       <td class="d-flex gap-1 align-items-center">
         <button class="btn btn-success btn-sm py-0 px-2" onclick="saveHousehold(${id})">Save</button>
@@ -448,8 +483,11 @@
     const phone = document.getElementById(`ei-phone-${id}`).value.trim();
     const threshold = parseFloat(document.getElementById(`ei-threshold-${id}`).value);
     const msg = document.getElementById(`ei-msg-${id}`);
-    if (!name || !email) { msg.textContent = 'Name & email required.'; return; }
-    if (!threshold || threshold <= 0) { msg.textContent = 'Valid kWh limit required.'; return; }
+    if (!name || !email) { msg.textContent = 'Name and email are required.'; return; }
+    if (!NAME_RE.test(name)) { msg.textContent = 'Name can only use letters, spaces, apostrophes, periods, and hyphens.'; return; }
+    if (!EMAIL_RE.test(email)) { msg.textContent = 'Enter a valid email address.'; return; }
+    if (phone && !PHONE_RE.test(phone)) { msg.textContent = 'Phone number must be exactly 10 digits.'; return; }
+    if (!threshold || threshold <= 0) { msg.textContent = 'Daily kWh limit must be greater than 0.'; return; }
     try {
       await api(`/households/${id}`, {
         method: 'PUT',
@@ -460,6 +498,98 @@
     } catch (e) {
       msg.textContent = 'Error: ' + e.message;
     }
+  }
+
+  // ── Charts ──────────────────────────────────────────────────────────────
+  let _chartUsers = null, _chartAlerts = null, _chartUsage = null;
+
+  function buildUsersChart(households, meters) {
+    const ctx = document.getElementById('chart-users').getContext('2d');
+    if (_chartUsers) _chartUsers.destroy();
+    _chartUsers = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Households', 'Smart Meters'],
+        datasets: [{
+          label: 'Count',
+          data: [households.length, meters.length],
+          backgroundColor: ['#0d6efd99', '#20c99799'],
+          borderColor: ['#0d6efd', '#20c997'],
+          borderWidth: 2,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } } }
+      }
+    });
+  }
+
+  function buildAlertsChart(alerts) {
+    const ctx = document.getElementById('chart-alerts').getContext('2d');
+    const open = alerts.filter(a => a.status === 'OPEN').length;
+    const resolved = alerts.filter(a => a.status === 'RESOLVED').length;
+    const high = alerts.filter(a => a.severity === 'HIGH').length;
+    const medium = alerts.filter(a => a.severity === 'MEDIUM').length;
+    const low = alerts.filter(a => a.severity === 'LOW').length;
+    if (_chartAlerts) _chartAlerts.destroy();
+    _chartAlerts = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Open', 'Resolved', 'High', 'Medium', 'Low'],
+        datasets: [{
+          label: 'Alerts',
+          data: [open, resolved, high, medium, low],
+          backgroundColor: ['#dc354599','#6c757d99','#dc3545cc','#fd7e14cc','#19875499'],
+          borderColor:      ['#dc3545','#6c757d','#dc3545','#fd7e14','#198754'],
+          borderWidth: 2,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } } }
+      }
+    });
+  }
+
+  async function buildUsageChart(households) {
+    if (!households.length) return;
+    const ctx = document.getElementById('chart-usage').getContext('2d');
+    const bills = await Promise.all(
+      households.map(h => api(`/households/${h.household_id}/bill-estimate`).catch(() => null))
+    );
+    const labels = households.map(h => h.customer_name.split(' ')[0]);
+    const kwh    = bills.map(b => b ? b.total_kwh : 0);
+    const amount = bills.map(b => b ? b.estimated_bill : 0);
+    if (_chartUsage) _chartUsage.destroy();
+    _chartUsage = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'kWh', data: kwh, backgroundColor: '#0d6efd88', borderColor: '#0d6efd', borderWidth: 2, borderRadius: 4, yAxisID: 'y' },
+          { label: '₹ Bill', data: amount, backgroundColor: '#ffc10788', borderColor: '#ffc107', borderWidth: 2, borderRadius: 4, yAxisID: 'y2' },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
+        scales: {
+          y:  { beginAtZero: true, position: 'left',  title: { display: true, text: 'kWh', font: { size: 10 } } },
+          y2: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '₹', font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  async function refreshCharts(alerts) {
+    buildUsersChart(_households, _meters);
+    buildAlertsChart(alerts || []);
+    await buildUsageChart(_households);
   }
 
 

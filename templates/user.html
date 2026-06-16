@@ -96,7 +96,7 @@
       <div id="tab-register" style="display:none">
         <div class="row g-2">
           <div class="col-12">
-            <input class="form-control" id="r-name" placeholder="Full Name *">
+            <input class="form-control" id="r-name" placeholder="Full Name *" pattern="[A-Za-z][A-Za-z .'-]*" title="Use letters, spaces, apostrophes, periods, and hyphens only">
           </div>
           <div class="col-12">
             <input type="email" class="form-control" id="r-email" placeholder="Email *">
@@ -111,7 +111,7 @@
             </div>
           </div>
           <div class="col-6">
-            <input class="form-control" id="r-phone" placeholder="Phone">
+            <input class="form-control" id="r-phone" type="tel" inputmode="numeric" maxlength="10" placeholder="Phone (10 digits)">
           </div>
           <div class="col-6">
             <input class="form-control" id="r-address" placeholder="Address">
@@ -222,6 +222,9 @@
 <script>
   let _user = null; // { household_id, customer_name, email }
   const _shownAlerts = new Set(); // track which alert IDs have been popped up
+  const NAME_RE = /^[A-Za-z][A-Za-z .'-]*$/;
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const PHONE_RE = /^\d{10}$/;
 
   function showAlertToast(alert) {
     const colors = { HIGH: '#dc3545', MEDIUM: '#fd7e14', LOW: '#198754' };
@@ -294,8 +297,12 @@
     const name     = document.getElementById('r-name').value.trim();
     const email    = document.getElementById('r-email').value.trim();
     const password = document.getElementById('r-password').value;
+    const phone    = document.getElementById('r-phone').value.trim();
     const msg      = document.getElementById('r-msg');
     if (!name || !email || !password) { setMsg(msg, 'Name, email and password are required.', false); return; }
+    if (!NAME_RE.test(name)) { setMsg(msg, 'Name can only use letters, spaces, apostrophes, periods, and hyphens.', false); return; }
+    if (!EMAIL_RE.test(email)) { setMsg(msg, 'Enter a valid email address.', false); return; }
+    if (phone && !PHONE_RE.test(phone)) { setMsg(msg, 'Phone number must be exactly 10 digits.', false); return; }
     if (!checkPwdStrength(password)) {
       setMsg(msg, 'Password must be at least 8 characters and include 1 uppercase, 1 lowercase, and 1 number.', false); return;
     }
@@ -303,7 +310,7 @@
     try {
       const res = await apiPost('/auth/register', {
         customer_name: name, email, password,
-        phone:     document.getElementById('r-phone').value.trim()   || null,
+        phone:     phone || null,
         address:   document.getElementById('r-address').value.trim() || null,
         daily_kwh_threshold: threshold,
       });
