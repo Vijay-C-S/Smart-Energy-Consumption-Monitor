@@ -3,52 +3,108 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Smart Energy — My Account</title>
+  <title>Energy Tracking System — My Account</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
   <style>
-    body { background: linear-gradient(135deg, #e8f4fd 0%, #f0f2f5 100%); min-height: 100vh; }
+    :root {
+      --brand: #1f7a4d;
+      --brand-dark: #134e35;
+      --brand-mid: #2f9d67;
+      --brand-soft: #e8f7ef;
+      --accent: #f2b544;
+      --ink: #17352a;
+      --muted: #687a72;
+      --line: #d7eadf;
+    }
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(47,157,103,.18), transparent 28rem),
+        linear-gradient(135deg, #effaf3 0%, #f8fbf8 52%, #eef7f4 100%);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    a { color: var(--brand); }
+    a:hover { color: var(--brand-dark); }
+    .app-navbar {
+      background: linear-gradient(90deg, var(--brand-dark), var(--brand), #3aa76d);
+      box-shadow: 0 8px 24px rgba(19,78,53,.18);
+    }
+    .app-navbar .navbar-brand { color: #fff; letter-spacing: .1px; }
+    .app-navbar .text-muted { color: rgba(255,255,255,.72) !important; }
+    .app-navbar .btn-outline-dark { border-color: rgba(255,255,255,.78); color: #fff; }
+    .app-navbar .btn-outline-dark:hover { background: #fff; color: var(--brand-dark); }
+    .text-primary { color: var(--brand) !important; }
+    .text-success { color: var(--brand-mid) !important; }
+    .form-control,
+    .form-select,
+    .input-group-text {
+      background-color: #fbfefc;
+      border-color: var(--line);
+      color: var(--ink);
+    }
+    .form-control:focus,
+    .form-select:focus {
+      border-color: var(--brand-mid);
+      box-shadow: 0 0 0 .2rem rgba(47,157,103,.14);
+    }
+    .btn-primary {
+      --bs-btn-bg: var(--brand);
+      --bs-btn-border-color: var(--brand);
+      --bs-btn-hover-bg: var(--brand-dark);
+      --bs-btn-hover-border-color: var(--brand-dark);
+      --bs-btn-active-bg: var(--brand-dark);
+      --bs-btn-active-border-color: var(--brand-dark);
+    }
+    .btn-success {
+      --bs-btn-bg: var(--brand-mid);
+      --bs-btn-border-color: var(--brand-mid);
+      --bs-btn-hover-bg: var(--brand);
+      --bs-btn-hover-border-color: var(--brand);
+      --bs-btn-active-bg: var(--brand);
+      --bs-btn-active-border-color: var(--brand);
+    }
 
     /* ── Auth card ── */
     .auth-wrap { min-height: calc(100vh - 60px); display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
-    .auth-card  { width: 100%; max-width: 440px; border: none; border-radius: 16px; box-shadow: 0 8px 32px rgba(13,110,253,.13); }
-    .auth-logo  { font-size: 2rem; }
+    .auth-card  { width: 100%; max-width: 440px; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 16px 40px rgba(19,78,53,.16); background: rgba(255,255,255,.96); }
+    .auth-logo  { color: var(--accent); font-size: 2rem; }
 
     /* ── Dashboard ── */
     #dashboard  { display: none; }
-    .dash-card  { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.07); }
+    .dash-card  { background: rgba(255,255,255,.94); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(24,62,42,.08); }
     .metric-val { font-size: 1.75rem; font-weight: 700; line-height: 1.1; }
-    .metric-lbl { font-size: 0.72rem; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
-    .sec-title  { font-size: .95rem; font-weight: 600; border-left: 3px solid #0d6efd; padding-left: 8px; }
-    .info-lbl   { font-size: 0.72rem; color: #888; }
+    .metric-lbl { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+    .sec-title  { color: var(--ink); font-size: .95rem; font-weight: 600; border-left: 4px solid var(--brand); padding-left: 8px; }
+    .info-lbl   { font-size: 0.72rem; color: var(--muted); }
     .info-val   { font-size: 0.9rem; font-weight: 600; }
 
     /* alert badges */
     .badge-HIGH     { background: #dc3545 !important; }
     .badge-MEDIUM   { background: #fd7e14 !important; }
-    .badge-LOW      { background: #198754 !important; }
+    .badge-LOW      { background: #2f9d67 !important; }
     .badge-OPEN     { background: #dc3545 !important; }
     .badge-RESOLVED { background: #6c757d !important; }
 
     /* nav */
     .nav-tabs .nav-link        { color: #495057; }
-    .nav-tabs .nav-link.active { color: #0d6efd; font-weight: 600; }
+    .nav-tabs .nav-link.active { color: var(--brand); background: var(--brand-soft); border-color: var(--line) var(--line) var(--brand-soft); font-weight: 600; }
 
     /* alert toasts */
     #alert-toast-container { position: fixed; top: 70px; right: 16px; z-index: 1100; display: flex; flex-direction: column; gap: 8px; max-width: 340px; }
-    .alert-toast { border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.18); min-width: 280px; }
+    .alert-toast { border-radius: 10px; box-shadow: 0 12px 28px rgba(19,78,53,.18); min-width: 280px; }
     .alert-toast.HIGH   { border-left: 5px solid #dc3545; }
     .alert-toast.MEDIUM { border-left: 5px solid #fd7e14; }
-    .alert-toast.LOW    { border-left: 5px solid #198754; }
+    .alert-toast.LOW    { border-left: 5px solid #2f9d67; }
   </style>
 </head>
 <body>
 
 <!-- ═══════ NAVBAR ═══════════════════════════════════════════════════════════ -->
-<nav class="navbar navbar-dark bg-primary px-4" style="height:60px">
-  <a class="navbar-brand fw-bold" href="/">&#9889; Smart Energy</a>
+<nav class="navbar navbar-light app-navbar px-4" style="height:60px">
+  <a class="navbar-brand fw-bold" href="/">&#9889; Energy Tracking System</a>
   <div class="d-flex align-items-center gap-3">
-    <span id="nav-name" class="text-white-50 small d-none"></span>
-    <button id="nav-logout" class="btn btn-outline-light btn-sm d-none" onclick="logout()">Logout</button>
+    <span id="nav-name" class="text-muted small d-none"></span>
+    <button id="nav-logout" class="btn btn-outline-dark btn-sm d-none" onclick="logout()">Logout</button>
   </div>
 </nav>
 
@@ -59,8 +115,8 @@
 
       <div class="text-center mb-4">
         <div class="auth-logo">&#9889;</div>
-        <h5 class="fw-bold mt-1 mb-0">My Energy Account</h5>
-        <div class="text-muted small">Smart Energy Monitoring Portal</div>
+        <h5 class="fw-bold mt-1 mb-0">Energy Tracking System</h5>
+        <div class="text-muted small">Energy Tracking System Portal</div>
       </div>
 
       <!-- Tabs -->
@@ -227,9 +283,9 @@
   const PHONE_RE = /^\d{10}$/;
 
   function showAlertToast(alert) {
-    const colors = { HIGH: '#dc3545', MEDIUM: '#fd7e14', LOW: '#198754' };
+    const colors = { HIGH: '#dc3545', MEDIUM: '#fd7e14', LOW: '#2f9d67' };
     const icons  = { HIGH: '🚨', MEDIUM: '⚠️', LOW: '✅' };
-    const color  = colors[alert.severity] || '#0d6efd';
+    const color  = colors[alert.severity] || '#1f7a4d';
     const icon   = icons[alert.severity]  || '🔔';
     const id     = 'toast-' + alert.alert_id;
 

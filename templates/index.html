@@ -3,28 +3,98 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Smart Energy Monitor</title>
+  <title>Energy Tracking System</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <style>
-    body { background: #f0f2f5; }
-    .card { border: none; box-shadow: 0 1px 4px rgba(0,0,0,.1); border-radius: 8px; }
+    :root {
+      --brand: #1f7a4d;
+      --brand-dark: #134e35;
+      --brand-mid: #2f9d67;
+      --brand-soft: #e8f7ef;
+      --accent: #f2b544;
+      --ink: #17352a;
+      --muted: #687a72;
+      --line: #d7eadf;
+    }
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(47,157,103,.18), transparent 28rem),
+        linear-gradient(135deg, #effaf3 0%, #f8fbf8 52%, #eef7f4 100%);
+      color: var(--ink);
+    }
+    a { color: var(--brand); }
+    a:hover { color: var(--brand-dark); }
+    .app-navbar {
+      background: linear-gradient(90deg, var(--brand-dark), var(--brand), #3aa76d);
+      box-shadow: 0 8px 24px rgba(19,78,53,.18);
+    }
+    .app-navbar .navbar-brand { color: #fff; letter-spacing: .1px; }
+    .app-navbar .badge { background: var(--accent) !important; color: #332400 !important; }
+    .app-navbar .btn-outline-dark { border-color: rgba(255,255,255,.78); color: #fff; }
+    .app-navbar .btn-outline-dark:hover { background: #fff; color: var(--brand-dark); }
+    .card { background: rgba(255,255,255,.94); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(24,62,42,.08); border-radius: 8px; }
     .stat-num { font-size: 2rem; font-weight: 700; }
-    .stat-label { font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: .5px; }
-    .section-title { font-size: 1rem; font-weight: 600; border-left: 3px solid #0d6efd; padding-left: 8px; margin-bottom: 12px; }
+    .stat-label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .section-title { color: var(--ink); font-size: 1rem; font-weight: 600; border-left: 4px solid var(--brand); padding-left: 8px; margin-bottom: 12px; }
     table { font-size: 0.875rem; }
     .badge-HIGH { background: #dc3545; }
     .badge-MEDIUM { background: #fd7e14; }
-    .badge-LOW { background: #198754; }
+    .badge-LOW { background: #2f9d67; }
     .badge-OPEN { background: #dc3545; }
     .badge-RESOLVED { background: #6c757d; }
+    .chart-card { height: 280px; display: flex; align-items: center; justify-content: center; }
+    .chart-card canvas { max-height: 240px; }
+    .text-primary { color: var(--brand) !important; }
+    .text-success { color: var(--brand-mid) !important; }
+    .table { --bs-table-bg: transparent; --bs-table-hover-bg: var(--brand-soft); color: var(--ink); }
+    .table-light { --bs-table-bg: #edf8f2; --bs-table-color: #214536; }
+    .form-control,
+    .form-select,
+    .input-group-text {
+      background-color: #fbfefc;
+      border-color: var(--line);
+      color: var(--ink);
+    }
+    .form-control:focus,
+    .form-select:focus {
+      border-color: var(--brand-mid);
+      box-shadow: 0 0 0 .2rem rgba(47,157,103,.14);
+    }
+    .btn-primary {
+      --bs-btn-bg: var(--brand);
+      --bs-btn-border-color: var(--brand);
+      --bs-btn-hover-bg: var(--brand-dark);
+      --bs-btn-hover-border-color: var(--brand-dark);
+      --bs-btn-active-bg: var(--brand-dark);
+      --bs-btn-active-border-color: var(--brand-dark);
+    }
+    .btn-success {
+      --bs-btn-bg: var(--brand-mid);
+      --bs-btn-border-color: var(--brand-mid);
+      --bs-btn-hover-bg: var(--brand);
+      --bs-btn-hover-border-color: var(--brand);
+      --bs-btn-active-bg: var(--brand);
+      --bs-btn-active-border-color: var(--brand);
+    }
+    .btn-warning {
+      --bs-btn-bg: var(--accent);
+      --bs-btn-border-color: var(--accent);
+      --bs-btn-hover-bg: #d99d2f;
+      --bs-btn-hover-border-color: #d99d2f;
+    }
+
     #login-overlay {
-      position: fixed; inset: 0; background: rgba(13,110,253,.08);
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(242,181,68,.18), transparent 18rem),
+        rgba(232,247,239,.82);
       backdrop-filter: blur(4px); z-index: 9999;
       display: flex; align-items: center; justify-content: center;
     }
     #login-box {
-      background: #fff; border-radius: 12px; padding: 2rem 2.5rem;
-      box-shadow: 0 4px 24px rgba(0,0,0,.15); width: 100%; max-width: 360px;
+      background: rgba(255,255,255,.96); border: 1px solid var(--line); border-radius: 12px; padding: 2rem 2.5rem;
+      box-shadow: 0 16px 40px rgba(19,78,53,.18); width: 100%; max-width: 360px;
     }
   </style>
 </head>
@@ -35,7 +105,7 @@
   <div id="login-box">
     <div class="text-center mb-4">
       <span style="font-size:2rem">⚡</span>
-      <h5 class="fw-bold mt-1 mb-0">Smart Energy Monitor</h5>
+      <h5 class="fw-bold mt-1 mb-0">Energy Tracking System</h5>
       <small class="text-muted">Admin Panel Login</small>
     </div>
     <div class="mb-3">
@@ -51,13 +121,13 @@
   </div>
 </div>
 
-<nav class="navbar navbar-dark bg-primary px-4 mb-4">
+<nav class="navbar navbar-light app-navbar px-4 mb-4">
   <div class="d-flex align-items-center gap-2">
-    <span class="navbar-brand fw-bold fs-5 mb-0">⚡ Smart Energy Monitor</span>
+    <span class="navbar-brand fw-bold fs-5 mb-0">⚡ Energy Tracking System</span>
     <span class="badge bg-warning text-dark">Admin Panel</span>
   </div>
   <div class="d-flex align-items-center gap-2">
-    <a href="/user" class="btn btn-outline-light btn-sm">User Portal</a>
+    <a href="/user" class="btn btn-outline-dark btn-sm">User Portal</a>
     <button class="btn btn-danger btn-sm" onclick="doLogout()">Logout</button>
   </div>
 </nav>
@@ -92,6 +162,28 @@
     </div>
   </div>
 
+<!-- Charts Row -->
+  <div class="row g-3 mb-4">
+    <div class="col-4">
+      <div class="card p-3">
+        <div class="section-title">Users Overview</div>
+        <div class="chart-card"><canvas id="chart-users"></canvas></div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="card p-3">
+        <div class="section-title">Alerts Status</div>
+        <div class="chart-card"><canvas id="chart-alerts"></canvas></div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="card p-3">
+        <div class="section-title">Usage &amp; Bills per Household</div>
+        <div class="chart-card"><canvas id="chart-usage"></canvas></div>
+      </div>
+    </div>
+  </div>
+
   <div class="row g-4">
 
     <!-- LEFT COLUMN -->
@@ -119,8 +211,30 @@
           </div>
         </div>
       </div>
+<!-- Bill & Report -->
+      <div class="card p-3 mb-4">
+        <div class="section-title">Bill Estimate & Report</div>
+        <div class="row g-2 mb-3">
+          <div class="col-8">
+            <select class="form-select form-select-sm" id="bill-household">
+              <option value="">Select Household</option>
+            </select>
+          </div>
+          <div class="col-4">
+            <button class="btn btn-outline-primary btn-sm w-100" onclick="getBill()">Calculate</button>
+          </div>
+        </div>
+        <div id="bill-result"></div>
+      </div>
+      
 
-      <!-- Meters -->
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="col-6">
+
+      
+<!-- Meters -->
       <div class="card p-3 mb-4">
         <div class="section-title">Smart Meters</div>
         <div class="table-responsive mb-3">
@@ -143,28 +257,6 @@
           </div>
         </div>
       </div>
-
-    </div>
-
-    <!-- RIGHT COLUMN -->
-    <div class="col-6">
-
-      <!-- Bill & Report -->
-      <div class="card p-3 mb-4">
-        <div class="section-title">Bill Estimate & Report</div>
-        <div class="row g-2 mb-3">
-          <div class="col-8">
-            <select class="form-select form-select-sm" id="bill-household">
-              <option value="">Select Household</option>
-            </select>
-          </div>
-          <div class="col-4">
-            <button class="btn btn-outline-primary btn-sm w-100" onclick="getBill()">Calculate</button>
-          </div>
-        </div>
-        <div id="bill-result"></div>
-      </div>
-
       <!-- Alerts -->
       <div class="card p-3">
         <div class="section-title mb-3">Alerts</div>
@@ -208,7 +300,10 @@
 
   async function loadAll() {
     await Promise.all([loadHouseholds(), loadMeters()]);
+    let alerts = [];
+    try { alerts = await api('/alerts/'); } catch {}
     await loadAlerts();
+    await refreshCharts(alerts);
   }
 
   async function loadHouseholds() {
@@ -470,6 +565,100 @@
       msg.textContent = 'Error: ' + e.message;
     }
   }
+
+  // ── Charts ──────────────────────────────────────────────────────────────
+  let _chartUsers = null, _chartAlerts = null, _chartUsage = null;
+
+  function buildUsersChart(households, meters) {
+    const ctx = document.getElementById('chart-users').getContext('2d');
+    if (_chartUsers) _chartUsers.destroy();
+    _chartUsers = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Households', 'Smart Meters'],
+        datasets: [{
+          label: 'Count',
+          data: [households.length, meters.length],
+          backgroundColor: ['#1f7a4d99', '#2aa19899'],
+          borderColor: ['#1f7a4d', '#2aa198'],
+          borderWidth: 2,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } } }
+      }
+    });
+  }
+
+  function buildAlertsChart(alerts) {
+    const ctx = document.getElementById('chart-alerts').getContext('2d');
+    const open = alerts.filter(a => a.status === 'OPEN').length;
+    const resolved = alerts.filter(a => a.status === 'RESOLVED').length;
+    const high = alerts.filter(a => a.severity === 'HIGH').length;
+    const medium = alerts.filter(a => a.severity === 'MEDIUM').length;
+    const low = alerts.filter(a => a.severity === 'LOW').length;
+    if (_chartAlerts) _chartAlerts.destroy();
+    _chartAlerts = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Open', 'Resolved', 'High', 'Medium', 'Low'],
+        datasets: [{
+          label: 'Alerts',
+          data: [open, resolved, high, medium, low],
+          backgroundColor: ['#dc354599','#6c757d99','#dc3545cc','#fd7e14cc','#2f9d6799'],
+          borderColor:      ['#dc3545','#6c757d','#dc3545','#fd7e14','#2f9d67'],
+          borderWidth: 2,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } } }
+      }
+    });
+  }
+
+  async function buildUsageChart(households) {
+    if (!households.length) return;
+    const ctx = document.getElementById('chart-usage').getContext('2d');
+    const bills = await Promise.all(
+      households.map(h => api(`/households/${h.household_id}/bill-estimate`).catch(() => null))
+    );
+    const labels = households.map(h => h.customer_name.split(' ')[0]);
+    const kwh    = bills.map(b => b ? b.total_kwh : 0);
+    const amount = bills.map(b => b ? b.estimated_bill : 0);
+    if (_chartUsage) _chartUsage.destroy();
+    _chartUsage = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'kWh', data: kwh, backgroundColor: '#1f7a4d88', borderColor: '#1f7a4d', borderWidth: 2, borderRadius: 4, yAxisID: 'y' },
+          { label: '₹ Bill', data: amount, backgroundColor: '#f2b54488', borderColor: '#f2b544', borderWidth: 2, borderRadius: 4, yAxisID: 'y2' },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } } },
+        scales: {
+          y:  { beginAtZero: true, position: 'left',  title: { display: true, text: 'kWh', font: { size: 10 } } },
+          y2: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '₹', font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  async function refreshCharts(alerts) {
+    buildUsersChart(_households, _meters);
+    buildAlertsChart(alerts || []);
+    await buildUsageChart(_households);
+  }
+
+
 
   // ── Admin Auth ───────────────────────────────────────────────────────────
   function doLogin() {
