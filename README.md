@@ -25,7 +25,7 @@ A FastAPI-based platform for monitoring household electricity usage, with smart 
 | Migrations | Alembic |
 | Database | SQLite (dev), PostgreSQL (prod) |
 | Analytics | Pandas, NumPy |
-| Frontend | Bootstrap 5 (CDN), Chart.js |
+| Frontend | Bootstrap 5 (CDN) |
 | Auth | PBKDF2-HMAC-SHA256 (stdlib, no extra deps) |
 | Simulation | Python + requests |
 | Testing | Pytest |
@@ -108,7 +108,6 @@ uvicorn app.main:app --reload --port 8000
 Full management interface at the root URL:
 
 - Stat cards — households, meters, open/resolved alert counts
-- Charts — users overview, alert breakdown, usage & bill per household
 - Households — list, add, edit, delete
 - Smart Meters — list, register, delete
 - Bill Estimate & Report — select a household to see kWh totals and estimated bill
